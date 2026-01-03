@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
-import { Pizza, ChefHat, ArrowRight, Lock } from 'lucide-react';
+import { Flame, ChefHat, ArrowRight, Lock } from 'lucide-react';
 
 export const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -29,8 +29,10 @@ export const Login = () => {
     setLoading(true);
     setError(null);
     try {
+      // Mantenemos el email técnico original si ya existe en la BD, 
+      // o puedes crear uno nuevo en Supabase que sea demo@fluxo.com
       const { error } = await supabase.auth.signInWithPassword({
-        email: 'demo@pizzaflow.com', // Asegúrate de haber creado este usuario en Supabase
+        email: 'demo@pizzaflow.com', 
         password: 'pizza123',
       });
       if (error) throw error;
@@ -45,15 +47,15 @@ export const Login = () => {
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-gray-700">
         
-        {/* Header */}
+        {/* Header con Rebranding */}
         <div className="bg-orange-600 p-8 text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-white p-3 rounded-full shadow-lg">
-              <Pizza className="w-10 h-10 text-orange-600" />
+              <Flame className="w-10 h-10 text-orange-600" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">PizzaFlow</h1>
-          <p className="text-orange-100">Sistema de Gestión Profesional</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Fluxo</h1>
+          <p className="text-orange-100">Sistema de Gestión Gastronómica</p>
         </div>
 
         {/* Body */}
@@ -73,7 +75,7 @@ export const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-3 px-4 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors"
-                placeholder="admin@pizzeria.com"
+                placeholder="admin@fluxo.com"
                 required
               />
             </div>

@@ -16,13 +16,22 @@ import {
   History as HistoryIcon, UserCog, LogOut, MinusCircle, 
   UserPlus, Key, X, Search, CalendarClock, Menu, Receipt,
   LayoutDashboard, Monitor, Crown, BarChart3, Briefcase, Tag,
-  Building2 
+  Building2, Flame 
 } from 'lucide-react';
+
+// --- CONSTANTES DEMO ---
+const DEMO_PRODUCTS = [
+  { id: '1', name: 'Muzzarella (Demo)', price: 8000, category: 'Pizzas', active: true },
+  { id: '2', name: 'Coca Cola 1.5L (Demo)', price: 2500, category: 'Bebidas', active: true },
+  { id: '3', name: 'Empanada Carne (Demo)', price: 1200, category: 'Empanadas', active: true },
+  { id: '4', name: 'Hamburguesa Completa (Demo)', price: 6500, category: 'Hamburguesas', active: true },
+];
 
 function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string>(''); 
 
   // Navegación
   const [activeTab, setActiveTab] = useState('pos');
@@ -36,6 +45,9 @@ function App() {
   const [promotions, setPromotions] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [cart, setCart] = useState<any[]>([]);
+  
+  // ESTADO NUEVO: Pedidos Demo
+  const [demoOrders, setDemoOrders] = useState<any[]>([]);
   
   // ESTADOS VARIOS
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -51,12 +63,201 @@ function App() {
   // Lógica de Permisos
   const currentUserEmail = session?.user?.email?.toLowerCase().trim() || '';
   const isDemo = currentUserEmail.includes('demo');
+  
+  // --- CORRECCIÓN 1: DECLARACIÓN DE VARIABLES FALTANTES ---
   const isSuperAdmin = userRole === 'super_admin';
-  const isAdmin = userRole === 'admin' || userRole === 'super_admin' || isDemo;
+  const isAdmin = userRole === 'admin' || isSuperAdmin || isDemo;
 
   const categories = ['Todo', 'Promociones', 'Pizzas', 'Milanesas', 'Hamburguesas', 'Empanadas', 'Bebidas', 'Postres'];
 
-  // --- CÁLCULO DE TOTALES (Movido aquí arriba para estar disponible siempre) ---
+  // ==============================================================================
+  // 1. EFECTOS Y CARGA DE DATOS
+  // ==============================================================================
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+          fetchUserRole(session); 
+      } else {
+          setLoading(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      if (event === 'SIGNED_IN' && session) {
+          setLoading(true);
+          logAction('LOGIN', 'Inicio de sesión exitoso', 'Sistema');
+          fetchUserRole(session);
+      } else if (event === 'SIGNED_OUT' || !session) {
+          setUserRole(null); 
+          setCompanyName('');
+          setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchUserRole = async (currentSession: any) => {
+    const userId = currentSession.user.id;
+    const email = currentSession.user.email;
+
+    // 0. --- REGLA DE ORO: SUPER ADMIN (CEO HARD CHECK) ---
+    if (email === 'diazmartinnicolas@gmail.com') {
+         console.log("👑 Super Admin (CEO) detectado por email.");
+         setUserRole('super_admin');
+         setCompanyName('Fluxo Global');
+         await fetchData(); 
+         setLoading(false);
+         return; 
+    }
+
+    // 1. Bypass Demo
+    if (email?.toLowerCase().includes('demo')) {
+        setUserRole('admin');
+        setCompanyName('Modo Demo');
+        // Usamos el flag forceDemo=true
+        await fetchData(true); 
+        setLoading(false);
+        return;
+    }
+
+    try {
+        // 2. CHECK PRIORITARIO: Metadata Super Admin
+        const metaRole = currentSession.user.user_metadata?.role || currentSession.user.app_metadata?.role;
+        
+        if (metaRole === 'super_admin') {
+            console.log("🚀 Super Admin detectado vía Metadata.");
+            setUserRole('super_admin');
+            setCompanyName('Global Admin');
+            fetchData();
+            setLoading(false);
+            return; 
+        }
+
+        // 3. Consulta a Base de Datos (Para usuarios normales)
+        const { data, error } = await supabase
+            .from('profiles')
+            .select(`
+                role, 
+                company_id,
+                companies (
+                    name,
+                    status
+                )
+            `)
+            .eq('id', userId)
+            .maybeSingle(); 
+        
+        // CHECK: Usuario Huérfano
+        if (!data) {
+            console.error("⛔ SEGURIDAD: Usuario sin perfil detectado.");
+            alert("⛔ ACCESO DENEGADO\n\nTu usuario ha sido eliminado del sistema.");
+            await supabase.auth.signOut();
+            setSession(null); 
+            setLoading(false); 
+            return;
+        }
+
+        const company: any = data.companies; 
+        
+        // CHECK: Empresa Inactiva
+        if (company && company.status === 'inactive') {
+            console.warn(`⛔ SEGURIDAD: Empresa ${company.name} inactiva.`);
+            alert(`⚠️ CUENTA SUSPENDIDA\n\nLa suscripción de "${company.name}" se encuentra inactiva.`);
+            await supabase.auth.signOut();
+            setSession(null); 
+            setLoading(false); 
+            return;
+        }
+
+        // ÉXITO
+        console.log("✅ Acceso concedido. Rol:", data.role);
+        setUserRole(data.role);
+        
+        if (company && company.name) {
+            setCompanyName(company.name);
+        }
+
+        if (data.role === 'cocina') setActiveTab('kitchen');
+
+        await fetchData();
+
+    } catch (error) {
+        console.error("Error crítico validando usuario:", error);
+        alert("Error de conexión validando credenciales.");
+        await supabase.auth.signOut();
+        setSession(null);
+    }
+    setLoading(false);
+  };
+
+  // --- CORRECCIÓN 2: FUNCIÓN DE CARGA CON ARGUMENTO OPCIONAL ---
+  const fetchData = async (forceDemo = false) => {
+    // MODO DEMO
+    if (isDemo || forceDemo) {
+        console.log("Modo Demo: Cargando datos locales...");
+        setProducts(DEMO_PRODUCTS);
+        setCustomers([{ id: 'd1', name: 'Cliente Mostrador' }, { id: 'd2', name: 'Mesa 4' }]);
+        setPromotions([]);
+        return; 
+    }
+
+    try {
+        const { data: prodData } = await supabase.from('products').select('*'); 
+        if (prodData) setProducts(prodData);
+
+        const { data: promoData } = await supabase.from('promotions').select('*');
+        if (promoData) setPromotions(promoData);
+
+        const { data: clientData } = await supabase.from('clients').select('*').order('name');
+        
+        if (clientData) {
+             setCustomers(clientData);
+        }
+    } catch (error) { console.error(error); }
+  };
+
+  // ==============================================================================
+  // 2. HELPERS
+  // ==============================================================================
+
+  const getRoleLabel = () => {
+    if (isDemo) return 'Usuario Demo';
+    const role = userRole?.toLowerCase();
+    
+    let label = 'Usuario';
+    if (role === 'super_admin') label = 'CEO / Super Admin';
+    else if (role === 'admin') label = 'Administrador';
+    else if (role === 'cashier' || role === 'cajero') label = 'Cajero';
+    else if (role === 'cocina') label = 'Cocina';
+
+    if (companyName && role !== 'super_admin') {
+        return `${label} (${companyName})`;
+    }
+    return label;
+  };
+
+  const addToCart = (product: any) => {
+    setCart(currentCart => [...currentCart, { ...product, cartId: Date.now() + Math.random() }]);
+    if (navigator.vibrate) navigator.vibrate(50);
+  };
+
+  const removeFromCart = (cartId: number) => setCart(cart.filter(item => item.cartId !== cartId));
+
+  const handleAddPromotionToCart = (promo: any) => {
+      const product1 = products.find(p => p.id === promo.product_1_id);
+      if (product1) addToCart(product1);
+      if (promo.product_2_id) {
+          const product2 = products.find(p => p.id === promo.product_2_id);
+          if (product2) setTimeout(() => addToCart(product2), 50); 
+      } else {
+          if (promo.name.toLowerCase().includes('2x1')) setTimeout(() => addToCart(product1), 50);
+      }
+  };
+
   const calculateTotals = () => {
     let tempCart = [...cart];
     let appliedDiscounts: any[] = [];
@@ -87,187 +288,13 @@ function App() {
     return { subtotal, totalDiscount, finalTotal: subtotal - totalDiscount, appliedDiscounts };
   };
 
-  // Desestructuramos los valores calculados para usarlos en el render
   const { finalTotal, appliedDiscounts } = calculateTotals();
+  const filteredProducts = selectedCategory === 'Todo' ? products : products.filter(p => p.category === selectedCategory);
+  const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()));
 
-
-  // --- GESTIÓN DE SESIÓN ROBUSTA ---
-  useEffect(() => {
-    // 1. Chequeo Inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-          // Si hay sesión, MANTENEMOS loading=true y verificamos rol
-          fetchUserRole(session); 
-      } else {
-          // Si no hay sesión, quitamos loading para mostrar Login
-          setLoading(false);
-      }
-    });
-
-    // 2. Suscripción a cambios
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      
-      if (event === 'SIGNED_IN' && session) {
-          setLoading(true); // ACTIVAR ESCUDO DE CARGA
-          logAction('LOGIN', 'Inicio de sesión exitoso', 'Sistema');
-          fetchUserRole(session);
-      } else if (event === 'SIGNED_OUT' || !session) {
-          setUserRole(null); 
-          setLoading(false); // Mostrar Login
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // --- FUNCIÓN DE SEGURIDAD "PORTERO" (Bloqueante) ---
-  const fetchUserRole = async (currentSession: any) => {
-    const userId = currentSession.user.id;
-    const email = currentSession.user.email;
-
-    // 1. Bypass para Demo
-    if (email?.toLowerCase().includes('demo')) {
-        setUserRole('admin');
-        await fetchData(); 
-        setLoading(false); // Liberar UI
-        return;
-    }
-
-    try {
-        // 2. CONSULTA BLINDADA
-        const { data, error } = await supabase
-            .from('profiles')
-            .select(`
-                role, 
-                company_id,
-                companies (
-                    name,
-                    status
-                )
-            `)
-            .eq('id', userId)
-            .maybeSingle(); 
-        
-        // --- CASO 1: USUARIO ELIMINADO (Huérfano) ---
-        if (!data) {
-            console.error("⛔ SEGURIDAD: Usuario sin perfil detectado.");
-            alert("⛔ ACCESO DENEGADO\n\nTu usuario ha sido eliminado del sistema o no tiene permisos asignados.");
-            
-            await supabase.auth.signOut();
-            setSession(null); // Limpiar sesión en memoria
-            setLoading(false); // Mostrar Login
-            return;
-        }
-
-        // --- CASO 2: EMPRESA INACTIVA (Suscripción Vencida) ---
-        const company: any = data.companies; 
-        const isSuperUser = data.role === 'super_admin';
-
-        if (company && company.status === 'inactive' && !isSuperUser) {
-            console.warn(`⛔ SEGURIDAD: Empresa ${company.name} inactiva.`);
-            alert("⚠️ CUENTA SUSPENDIDA\n\nLa suscripción de tu empresa se encuentra inactiva. Contacta al administrador.");
-            
-            await supabase.auth.signOut();
-            setSession(null); // Limpiar sesión en memoria
-            setLoading(false); // Mostrar Login
-            return;
-        }
-
-        // 3. ÉXITO: ASIGNAR ROL
-        console.log("✅ Acceso concedido. Rol:", data.role);
-        setUserRole(data.role);
-        
-        if (data.role === 'cocina') setActiveTab('kitchen');
-
-        // Cargar datos de negocio
-        await fetchData();
-
-    } catch (error) {
-        console.error("Error crítico validando usuario:", error);
-        alert("Error de conexión validando credenciales. Intente nuevamente.");
-        await supabase.auth.signOut();
-        setSession(null);
-    }
-    
-    // FINALMENTE, LIBERAR LA PANTALLA DE CARGA
-    setLoading(false);
-  };
-
-  const fetchData = async () => {
-    try {
-        const { data: prodData } = await supabase.from('products').select('*'); 
-        if (prodData) setProducts(prodData);
-
-        const { data: promoData } = await supabase.from('promotions').select('*');
-        if (promoData) setPromotions(promoData);
-
-        const { data: clientData } = await supabase.from('clients').select('*').order('name');
-        
-        let demoIds: string[] = [];
-        try {
-            if (isAdmin) {
-                const { data: profiles } = await supabase.from('profiles').select('id, email');
-                if (profiles) {
-                    demoIds = profiles
-                        .filter((p: any) => p.email?.toLowerCase().includes('demo'))
-                        .map((p: any) => p.id);
-                }
-            }
-        } catch (e) { console.warn(e); }
-
-        if (clientData) {
-             const myId = session?.user?.id;
-             let cleanList = clientData;
-
-             if (currentUserEmail.includes('demo')) {
-                cleanList = clientData.filter((c: any) => c.user_id === myId);
-             } else if (demoIds.length > 0) {
-                cleanList = clientData.filter((c: any) => !demoIds.includes(c.user_id));
-             }
-             setCustomers(cleanList);
-        }
-    } catch (error) { console.error(error); }
-  };
-
-  const handleLogout = async () => {
-    await logAction('LOGOUT', 'Usuario cerró sesión', 'Sistema');
-    await supabase.auth.signOut();
-    // No recargamos la página, dejamos que el useEffect maneje el estado
-    setSession(null);
-  };
-
-  const handleChangePassword = async () => {
-    if (newPassword.length < 6) return alert("Mínimo 6 caracteres.");
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) alert("Error: " + error.message);
-    else { 
-        await logAction('CAMBIO_CLAVE', 'Usuario actualizó su contraseña', 'Sistema');
-        alert("¡Contraseña actualizada!"); 
-        setShowPasswordModal(false); 
-        setNewPassword(''); 
-    }
-  };
-
-  const addToCart = (product: any) => {
-    setCart(currentCart => [...currentCart, { ...product, cartId: Date.now() + Math.random() }]);
-    if (navigator.vibrate) navigator.vibrate(50);
-  };
-
-  const handleAddPromotionToCart = (promo: any) => {
-      const product1 = products.find(p => p.id === promo.product_1_id);
-      if (product1) addToCart(product1);
-      if (promo.product_2_id) {
-          const product2 = products.find(p => p.id === promo.product_2_id);
-          if (product2) setTimeout(() => addToCart(product2), 50); 
-      } else {
-          if (promo.name.toLowerCase().includes('2x1')) setTimeout(() => addToCart(product1), 50);
-      }
-  };
-  
-  const removeFromCart = (cartId: number) => setCart(cart.filter(item => item.cartId !== cartId));
-
+  // ==============================================================================
+  // 3. HANDLERS
+  // ==============================================================================
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
@@ -276,10 +303,19 @@ function App() {
 
     if (isDemo) {
         setTimeout(() => {
-            alert("Pedido Simulado.");
-            setCart([]);
-            setIsProcessing(false);
-        }, 800);
+            const fakeTicket = Math.floor(Math.random() * 1000) + 1000;
+            const fakeOrder = {
+                id: Date.now(),
+                ticket_number: fakeTicket,
+                created_at: new Date().toISOString(),
+                status: 'pendiente',
+                client: { name: clientSearchTerm || 'Cliente Demo' },
+                order_items: cart.map(item => ({ product: { name: item.name }, quantity: 1 }))
+            };
+            setDemoOrders(prev => [fakeOrder, ...prev]);
+            alert(`(Simulación) Ticket #${fakeTicket} enviado a Cocina correctamente.`);
+            setCart([]); setSelectedCustomerId(''); setClientSearchTerm(''); setMobileView('products'); setIsProcessing(false);
+        }, 600); 
         return; 
     }
 
@@ -305,67 +341,58 @@ function App() {
       
       await logAction('VENTA', `Ticket #${orderData.ticket_number} - $${finalTotal}`, 'Caja');
       alert(`¡Ticket #${orderData.ticket_number || 'OK'} enviado!`);
-      setCart([]);
-      setSelectedCustomerId('');
-      setClientSearchTerm('');
-      setMobileView('products');
+      setCart([]); setSelectedCustomerId(''); setClientSearchTerm(''); setMobileView('products');
 
-    } catch (error: any) { 
-        console.error("Error al confirmar:", error);
-        alert("Error: " + error.message); 
-    } 
+    } catch (error: any) { alert("Error: " + error.message); } 
     finally { setIsProcessing(false); }
   };
 
   const handleQuickCustomerCreate = async () => {
     if(!quickCustomerName) return;
-    if (isDemo) { alert("Cliente Simulado."); setShowQuickCustomer(false); return; }
+    if (isDemo) { 
+        const fakeId = `temp-${Date.now()}`;
+        setCustomers(prev => [...prev, { id: fakeId, name: quickCustomerName }]);
+        setSelectedCustomerId(fakeId); setClientSearchTerm(quickCustomerName);
+        setShowQuickCustomer(false); setQuickCustomerName('');
+        alert("(Demo) Cliente creado en memoria."); return; 
+    }
 
     try {
         const { data, error } = await supabase.from('clients').insert([{ name: quickCustomerName, user_id: session.user.id }]).select().single();
         if (error) throw error;
         await logAction('CREAR_CLIENTE', `Rápido: ${data.name}`, 'Clientes');
-        setCustomers([data, ...customers]); 
-        setSelectedCustomerId(data.id);
-        setClientSearchTerm(data.name); 
-        setShowQuickCustomer(false);
-        setQuickCustomerName('');
+        setCustomers([data, ...customers]); setSelectedCustomerId(data.id); setClientSearchTerm(data.name); setShowQuickCustomer(false); setQuickCustomerName('');
     } catch (error: any) { alert("Error: " + error.message); }
   };
 
-  const getRoleLabel = () => {
-    if (isDemo) return 'Usuario Demo';
-    const role = userRole?.toLowerCase();
-    if (role === 'super_admin') return 'CEO / Super Admin';
-    if (role === 'admin') return 'Administrador';
-    if (role === 'cashier' || role === 'cajero') return 'Cajero';
-    if (role === 'cocina') return 'Cocina';
-    return 'Usuario';
+  const handleLogout = async () => {
+    await logAction('LOGOUT', 'Usuario cerró sesión', 'Sistema');
+    await supabase.auth.signOut();
+    setSession(null);
   };
 
-  const filteredProducts = selectedCategory === 'Todo' ? products : products.filter(p => p.category === selectedCategory);
-  const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()));
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) return alert("Mínimo 6 caracteres.");
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) alert("Error: " + error.message);
+    else { alert("¡Contraseña actualizada!"); setShowPasswordModal(false); setNewPassword(''); }
+  };
 
-  // -----------------------------------------------------------
-  // RENDERIZADO CONDICIONAL (ESCUDO DE CARGA)
-  // -----------------------------------------------------------
-  
-  // Si está cargando, mostramos splash screen y NADA MÁS.
+  // ==============================================================================
+  // 4. RENDERIZADO
+  // ==============================================================================
+
   if (loading) {
       return (
         <div className="h-dvh flex flex-col items-center justify-center bg-gray-50">
-            <div className="animate-spin mb-4">
-                <PizzaIcon className="w-12 h-12 text-orange-500 opacity-50" />
-            </div>
-            <div className="text-orange-600 font-bold animate-pulse text-lg">Cargando PizzaFlow...</div>
+            <div className="animate-spin mb-4"><Flame className="w-12 h-12 text-orange-500 opacity-50" /></div>
+            <div className="text-orange-600 font-bold animate-pulse text-lg">Cargando Fluxo...</div>
         </div>
       );
   }
 
-  // Si no carga y no hay sesión, mostramos Login
   if (!session) return <Login />;
 
-  // Si hay sesión y el rol es Cocina, mostramos KDS
   if (userRole === 'cocina') {
     return (
       <div className="h-dvh flex flex-col bg-gray-900">
@@ -373,12 +400,13 @@ function App() {
           <h1 className="font-bold text-xl flex items-center gap-2">👨‍🍳 Cocina</h1>
           <button onClick={handleLogout} className="text-red-300"><LogOut size={20}/></button>
         </div>
-        <div className="flex-1 overflow-hidden"><Kitchen /></div>
+        <div className="flex-1 overflow-hidden">
+            <Kitchen demoOrders={demoOrders} onDemoComplete={(id: any) => setDemoOrders(prev => prev.filter(o => o.id !== id))} />
+        </div>
       </div>
     );
   }
 
-  // Si pasó todo, mostramos la App Principal
   return (
     <div className="flex h-dvh bg-gray-50 font-sans text-gray-800 overflow-hidden">
       
@@ -387,28 +415,28 @@ function App() {
         <div>
           <div className="p-5 pb-2">
             <div className="flex items-center gap-3 mb-5">
-              <div className="bg-orange-100 p-2 rounded-full"><PizzaIcon className="w-6 h-6 text-orange-600" /></div>
-              <h1 className="text-xl font-bold text-gray-800 tracking-tight">PizzaFlow</h1>
+              <div className="bg-orange-100 p-2 rounded-full"><Flame className="w-6 h-6 text-orange-600" /></div>
+              <h1 className="text-xl font-bold text-gray-800 tracking-tight">Fluxo</h1>
             </div>
 
             <div className={`flex items-center justify-between px-3 py-3 rounded-xl border mb-2 shadow-sm transition-all ${isDemo ? 'bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200' : 'bg-white border-gray-200'}`}>
-              <div className="flex flex-col">
+              <div className="flex flex-col w-full overflow-hidden">
                 <span className={`text-[10px] font-extrabold tracking-wider uppercase mb-0.5 ${isDemo ? 'text-orange-600' : 'text-gray-400'}`}>
                   {isDemo ? 'MODO VISITA' : 'TU ROL'}
                 </span>
-                <div className="flex items-center gap-1.5">
-                  {isDemo ? <Monitor className="w-3.5 h-3.5 text-orange-700" /> : 
-                   isSuperAdmin ? <ShieldCheckIcon className="w-3.5 h-3.5 text-purple-600" /> :
-                   userRole === 'admin' ? <Crown className="w-3.5 h-3.5 text-yellow-500" /> :
-                   <Briefcase className="w-3.5 h-3.5 text-blue-500" />}
+                <div className="flex items-start gap-1.5"> 
+                  {isDemo ? <Monitor className="w-3.5 h-3.5 text-orange-700 flex-shrink-0 mt-0.5" /> : 
+                   isSuperAdmin ? <ShieldCheckIcon className="w-3.5 h-3.5 text-purple-600 flex-shrink-0 mt-0.5" /> :
+                   userRole === 'admin' ? <Crown className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0 mt-0.5" /> :
+                   <Briefcase className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" />}
                   
-                  <span className={`text-sm font-bold truncate ${isDemo ? 'text-orange-800' : 'text-gray-800'}`}>
+                  <span className={`text-sm font-bold whitespace-normal leading-tight break-words ${isDemo ? 'text-orange-800' : 'text-gray-800'}`} title={getRoleLabel()}>
                     {getRoleLabel()}
                   </span>
                 </div>
               </div>
               {!isDemo && (
-                <button onClick={() => setShowPasswordModal(true)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-gray-50 rounded-lg transition-colors"><Key className="w-4 h-4" /></button>
+                <button onClick={() => setShowPasswordModal(true)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-gray-50 rounded-lg transition-colors flex-shrink-0"><Key className="w-4 h-4" /></button>
               )}
             </div>
           </div>
@@ -429,17 +457,17 @@ function App() {
                 {isSuperAdmin ? (
                    <SidebarItem 
                       icon={<Building2 size={20}/>} 
-                      label="Clientes/Usuarios" 
+                      label="Usuarios" 
                       active={activeTab === 'clients'} 
                       onClick={() => setActiveTab('clients')} 
-                    />
+                   />
                 ) : (
                    <SidebarItem 
                       icon={<UserCog size={20}/>} 
                       label="Personal" 
                       active={activeTab === 'users'} 
                       onClick={() => setActiveTab('users')} 
-                    />
+                   />
                 )}
 
                 <SidebarItem icon={<CalendarClock size={20}/>} label="Reservas" active={activeTab === 'reservations'} onClick={() => setActiveTab('reservations')} />
@@ -477,7 +505,7 @@ function App() {
                      <div className="pt-4 pb-2 px-2 text-xs font-bold text-gray-400 uppercase">Administración</div>
                      
                      {isSuperAdmin ? (
-                        <SidebarItem icon={<Building2 size={20}/>} label="Clientes/Usuarios" active={activeTab === 'clients'} onClick={() => { setActiveTab('clients'); setShowMobileMenu(false); }} />
+                        <SidebarItem icon={<Building2 size={20}/>} label="Usuarios" active={activeTab === 'clients'} onClick={() => { setActiveTab('clients'); setShowMobileMenu(false); }} />
                      ) : (
                         <SidebarItem icon={<UserCog size={20}/>} label="Personal" active={activeTab === 'users'} onClick={() => { setActiveTab('users'); setShowMobileMenu(false); }} />
                      )}
@@ -496,6 +524,7 @@ function App() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50 relative pt-16 md:pt-0">
         
+        {/* VISTAS */}
         {activeTab === 'pos' && (
           <div className="flex h-full flex-col md:flex-row"> 
             <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${mobileView === 'cart' ? 'hidden md:block' : 'block'}`}>
@@ -576,7 +605,7 @@ function App() {
 
         {/* CONTENIDORES DE OTRAS SECCIONES */}
         <div className="flex-1 overflow-auto bg-gray-50">
-            {activeTab === 'kitchen' && <Kitchen />}
+            {activeTab === 'kitchen' && <Kitchen demoOrders={demoOrders} onDemoComplete={(id: any) => setDemoOrders(prev => prev.filter(o => o.id !== id))} />}
             {activeTab === 'customers' && <Customers />}
             {isAdmin && activeTab === 'reservations' && <Reservations />}
             {isAdmin && activeTab === 'inventory' && <Inventory />}
@@ -614,10 +643,6 @@ function App() {
     </div>
   );
 }
-
-// ==========================================
-// COMPONENTES AUXILIARES (Icons & Helpers)
-// ==========================================
 
 function SidebarItem({ icon, label, active, onClick }: any) {
   return (

@@ -2,47 +2,112 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
 import { 
-  Building2, Store, Coffee, Beer, Utensils, 
-  Plus, Search, Trash2, Edit, Save, X, 
-  ToggleLeft, ToggleRight, CheckCircle, ShieldCheck, UserCog, AlertTriangle
+  Building2, Pizza, Beer, UtensilsCrossed, Coffee, ShieldCheck,
+  Plus, Search, Trash2, Pencil, X, 
+  UserCog, AlertTriangle, ChefHat, CreditCard, User, Mail, Briefcase, Lock
 } from 'lucide-react';
 
 // Credenciales para crear usuarios nuevos (Auth)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export default function SaaS_Dashboard() {
-  const [companies, setCompanies] = useState<any[]>([]);
+// --- DATOS MOCK PARA MODO STAFF (DEMO) ---
+const DEMO_STAFF = [
+  { id: '1', name: 'Carlos "Caja" Ruiz', email: 'caja1@fluxo.com', role: 'cashier', status: 'active' },
+  { id: '2', name: 'Marta Cocina', email: 'chef@fluxo.com', role: 'cocina', status: 'active' },
+  { id: '3', name: 'Lucas Mozo', email: 'salon@fluxo.com', role: 'waiter', status: 'active' },
+  { id: '4', name: 'Sofía Admin', email: 'sofia@fluxo.com', role: 'admin', status: 'active' },
+];
+
+export default function Users() {
+  // ESTADOS
+  const [viewMode, setViewMode] = useState<'companies' | 'staff'>('companies');
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // DATOS DEL USUARIO ACTUAL
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
+
   // --- ESTADOS DE MODALES ---
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // --- DATOS FORMULARIOS ---
-  // Formulario Creación
-  const [createData, setCreateData] = useState({
-    businessName: '', businessType: 'pizzeria', adminEmail: '', adminPassword: ''
+  // --- DATOS FORMULARIOS (UNIFICADO) ---
+  const [formData, setFormData] = useState({
+    name: '', // Nombre Fantasía (Empresa) o Nombre Completo (Staff)
+    typeOrRole: '', // Rubro (Empresa) o Rol (Staff)
+    email: '',
+    password: ''
   });
 
-  // Formulario Edición
+  // Datos para edición
   const [editData, setEditData] = useState({
-    id: '', name: '', business_type: '', status: '', currentAdminEmail: '', newAdminEmail: ''
+    id: '', 
+    name: '', 
+    typeOrRole: '', 
+    status: '', 
+    currentEmail: '', 
+    newEmail: '' 
   });
 
-  // Mapa de Admins: { company_id: email }
   const [adminMap, setAdminMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetchData();
+    checkUserAndFetch();
   }, []);
 
-  const fetchData = async () => {
+  // --- LÓGICA CORE DE 3 VÍAS ---
+  const checkUserAndFetch = async () => {
     setLoading(true);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return; 
+
+    const email = user.email || '';
+
+    // 1. MODO DEMO
+    if (email.includes('demo')) {
+        console.log("Modo: Demo Staff");
+        setViewMode('staff');
+        setItems(DEMO_STAFF);
+        setLoading(false);
+        return;
+    }
+
+    // 2. HARD CHECK: SUPER ADMIN (SaaS Manager)
+    // Igual que en App.tsx, prioridad absoluta
+    if (email === 'diazmartinnicolas@gmail.com' || user.user_metadata?.role === 'super_admin') {
+        console.log("Modo: Super Admin (Companies)");
+        setViewMode('companies');
+        setFormData(prev => ({ ...prev, typeOrRole: 'pizzeria' })); 
+        // Mock de perfil para evitar errores
+        setCurrentUserProfile({ role: 'super_admin' });
+        await fetchCompanies();
+        setLoading(false);
+        return;
+    }
+
+    // 3. MODO ADMIN DE NEGOCIO (Staff Manager)
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    
+    setCurrentUserProfile(profile);
+    console.log("Modo: Business Admin (Real Staff)");
+    setViewMode('staff');
+    setFormData(prev => ({ ...prev, typeOrRole: 'cashier' })); 
+    
+    if (profile?.company_id) {
+        await fetchRealStaff(profile.company_id);
+    } else {
+        console.warn("Usuario sin company_id asignado.");
+    }
+    
+    setLoading(false);
+  };
+
+  const fetchCompanies = async () => {
     try {
-      // 1. Cargar Empresas
       const { data: coData, error: coError } = await supabase
         .from('companies')
         .select('*')
@@ -50,265 +115,404 @@ export default function SaaS_Dashboard() {
 
       if (coError) throw coError;
 
-      // 2. Cargar Admins vinculados
       const { data: profData } = await supabase
         .from('profiles')
         .select('company_id, email')
         .eq('role', 'admin')
         .not('company_id', 'is', null);
 
-      if (coData) setCompanies(coData);
+      if (coData) setItems(coData.map(c => ({...c, name: c.name || 'Sin Nombre'})));
       
-      // Mapear admins
       if (profData) {
         const mapping: Record<string, string> = {};
-        profData.forEach((p: any) => { mapping[p.company_id] = p.email; });
+        profData.forEach((p: any) => { mapping[p.company_id] = p.email || 'Sin Email'; });
         setAdminMap(mapping);
       }
     } catch (error: any) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
+      console.error("Error fetching companies:", error);
     }
   };
 
-  // --- CREAR CLIENTE (Lógica original) ---
-// --- CREAR CLIENTE (CORREGIDO) ---
-const handleCreateClient = async (e: React.FormEvent) => {
+  const fetchRealStaff = async (companyId: string) => {
+      try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('company_id', companyId)
+            .neq('role', 'super_admin') 
+            .order('name', { ascending: true });
+
+          if (error) throw error;
+          if (data) setItems(data.map(s => ({
+              ...s, 
+              name: s.name || 'Sin Nombre',
+              email: s.email || 'Sin Email'
+          })));
+      } catch (error: any) {
+          console.error("Error fetching staff:", error);
+      }
+  };
+
+  // --- CREACIÓN (Dual Logic) ---
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validación básica
-    if (createData.adminPassword.length < 6) return alert("La contraseña debe tener al menos 6 caracteres.");
-    
+    // DEMO
+    if (items === DEMO_STAFF) {
+        alert("(Demo) Ítem creado en memoria.");
+        setShowCreateModal(false);
+        return;
+    }
+
+    if (formData.password.length < 6) return alert("La contraseña debe tener al menos 6 caracteres.");
     setIsProcessing(true);
 
     try {
-      console.log("1. Iniciando creación de empresa:", createData.businessName);
+        const tempClient = createClient(supabaseUrl, supabaseKey);
 
-      // 1. Insertar la Empresa
-      const { data: company, error: coError } = await supabase
-        .from('companies')
-        .insert([{ 
-            name: createData.businessName, 
-            business_type: createData.businessType, 
-            status: 'active' 
-        }])
-        .select()
-        .single();
+        if (viewMode === 'companies') {
+            // A) CREAR EMPRESA + ADMIN
+            const { data: company, error: coError } = await supabase
+                .from('companies')
+                .insert([{ name: formData.name, business_type: formData.typeOrRole, status: 'active' }])
+                .select().single();
 
-      if (coError) throw new Error(`Error creando empresa: ${coError.message}`);
-      
-      // LOG CRÍTICO PARA DEBUG
-      console.log("2. Empresa creada correctamente:", company);
+            if (coError) throw coError;
 
-      // VALIDACIÓN ESTRICTA
-      if (!company || !company.id) {
-        throw new Error("La empresa se creó pero no devolvió un ID válido. Abortando creación de usuario.");
-      }
+            // Trigger SQL se encarga del perfil
+            const { error: authError } = await tempClient.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: `Admin ${formData.name}`,
+                        role: 'admin',
+                        company_id: company.id 
+                    }
+                }
+            });
+            if (authError) throw authError;
+            alert(`✅ Empresa "${formData.name}" creada.`);
+            await fetchCompanies();
 
-      // 2. Crear el Usuario en Auth
-      console.log("3. Creando usuario Auth vinculado a Company ID:", company.id);
+        } else {
+            // B) CREAR EMPLEADO (STAFF)
+            const myCompanyId = currentUserProfile?.company_id;
+            if (!myCompanyId) throw new Error("No tienes una empresa asignada.");
 
-      const tempClient = createClient(supabaseUrl, supabaseKey);
-      
-      const { data: authData, error: authError } = await tempClient.auth.signUp({
-        email: createData.adminEmail,
-        password: createData.adminPassword,
-        options: {
-            data: {
-                // Metadatos que leerá el Trigger
-                full_name: `Admin ${createData.businessName}`,
-                role: 'admin',
-                company_id: company.id // ¡Aquí enviamos el UUID!
-            }
+            const { error: authError } = await tempClient.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.name, // Nombre empleado
+                        role: formData.typeOrRole, // Rol empleado
+                        company_id: myCompanyId
+                    }
+                }
+            });
+            if (authError) throw authError;
+            alert(`✅ Empleado "${formData.name}" registrado.`);
+            await fetchRealStaff(myCompanyId);
         }
-      });
 
-      if (authError) throw new Error(`Error en Auth: ${authError.message}`);
-      
-      console.log("4. Usuario creado. El trigger debería haber generado el perfil.");
-
-      alert(`✅ Cliente "${createData.businessName}" creado y vinculado exitosamente.`);
-      setShowCreateModal(false);
-      setCreateData({ businessName: '', businessType: 'pizzeria', adminEmail: '', adminPassword: '' });
-      fetchData();
+        setShowCreateModal(false);
+        // Reset form
+        setFormData({ 
+            name: '', 
+            typeOrRole: viewMode === 'companies' ? 'pizzeria' : 'cashier', 
+            email: '', 
+            password: '' 
+        });
 
     } catch (error: any) {
-      console.error("❌ Error Crítico:", error);
-      alert("Fallo en el proceso: " + error.message);
-      
-      // Opcional: Aquí podrías agregar lógica para borrar la empresa si falló el usuario
-      // if (company?.id) await supabase.from('companies').delete().eq('id', company.id);
+        alert("Error: " + error.message);
     } finally {
-      setIsProcessing(false);
+        setIsProcessing(false);
     }
   };
 
-  // --- ABRIR EDICIÓN ---
-  const openEditModal = (company: any) => {
-      setEditData({
-          id: company.id,
-          name: company.name,
-          business_type: company.business_type,
-          status: company.status,
-          currentAdminEmail: adminMap[company.id] || 'Sin asignar',
-          newAdminEmail: '' // Limpio para que el usuario escriba si quiere cambiarlo
-      });
-      setShowEditModal(true);
-  };
-
-  // --- GUARDAR EDICIÓN (RPC INCLUIDA) ---
-  const handleSaveEdit = async (e: React.FormEvent) => {
+  // --- EDICIÓN ---
+  const handleEditSave = async (e: React.FormEvent) => {
       e.preventDefault();
       setIsProcessing(true);
 
       try {
-          // 1. Actualizar Datos Básicos de la Empresa
-          const { error: updateError } = await supabase
-              .from('companies')
-              .update({
+          if (viewMode === 'companies') {
+              // Editar Empresa
+              const { error } = await supabase.from('companies').update({
                   name: editData.name,
-                  business_type: editData.business_type,
+                  business_type: editData.typeOrRole,
                   status: editData.status
-              })
-              .eq('id', editData.id);
+              }).eq('id', editData.id);
+              if (error) throw error;
 
-          if (updateError) throw updateError;
-
-          // 2. Asignar Nuevo Admin (Solo si se escribió algo en el campo)
-          if (editData.newAdminEmail.trim() !== '') {
-              // Llamada a la RPC creada en SQL
-              const { error: rpcError } = await supabase.rpc('assign_company_admin', {
-                  p_email: editData.newAdminEmail.trim(),
-                  p_company_id: editData.id
-              });
-
-              if (rpcError) throw rpcError;
-              alert("✅ Datos actualizados y nuevo Administrador vinculado.");
+              // Reasignar Admin
+              if (editData.newEmail.trim() !== '') {
+                  const { error: rpcError } = await supabase.rpc('assign_company_admin', {
+                      p_email: editData.newEmail.trim(),
+                      p_company_id: editData.id
+                  });
+                  if (rpcError) throw rpcError;
+              }
+              await fetchCompanies();
           } else {
-              alert("✅ Datos de empresa actualizados.");
+              // Editar Empleado (Perfil)
+              if (currentUserProfile) {
+                  const { error } = await supabase.from('profiles').update({
+                      name: editData.name,
+                      role: editData.typeOrRole
+                  }).eq('id', editData.id);
+                  if (error) throw error;
+                  await fetchRealStaff(currentUserProfile.company_id);
+              }
           }
-
+          alert("✅ Actualizado.");
           setShowEditModal(false);
-          fetchData();
-
       } catch (error: any) {
-          console.error(error);
-          alert("Error al actualizar: " + error.message);
+          alert("Error: " + error.message);
       } finally {
           setIsProcessing(false);
       }
   };
 
-  // --- ELIMINAR ---
+  // --- BORRAR ---
   const handleDelete = async (id: string, name: string) => {
-      if (!confirm(`¿Borrar "${name}"?\nSe perderán los datos de esta empresa.`)) return;
-      const { error } = await supabase.from('companies').delete().eq('id', id);
-      if (error) alert("Error: " + error.message);
-      else fetchData();
+      if (!confirm(`¿Borrar "${name}"? Esta acción es irreversible.`)) return;
+      
+      if (items === DEMO_STAFF) {
+          setItems(prev => prev.filter(i => i.id !== id));
+          return;
+      }
+
+      try {
+          if (viewMode === 'companies') {
+              const { error } = await supabase.from('companies').delete().eq('id', id);
+              if (error) throw error;
+              await fetchCompanies();
+          } else {
+              const { error } = await supabase.rpc('delete_user_by_admin', { target_user_id: id });
+              if (error) {
+                  await supabase.from('profiles').delete().eq('id', id);
+              }
+              if (currentUserProfile) await fetchRealStaff(currentUserProfile.company_id);
+          }
+      } catch (error: any) {
+          alert("Error al borrar: " + error.message);
+      }
   };
 
-  const getIconByType = (type: string) => {
-      const icons: any = { pizzeria: <Store className="text-orange-500"/>, cerveceria: <Beer className="text-yellow-500"/>, cafeteria: <Coffee className="text-brown-500"/>, restaurante: <Utensils className="text-blue-500"/> };
-      return icons[type] || <Building2 className="text-gray-500"/>;
+  // --- PREPARAR MODAL DE EDICIÓN ---
+  const openEditModal = (item: any) => {
+      if (items === DEMO_STAFF) {
+          alert("Edición simulada en modo Demo.");
+          return;
+      }
+
+      setEditData({
+          id: item.id,
+          name: item.name || '',
+          typeOrRole: viewMode === 'companies' ? item.business_type : item.role,
+          status: item.status || 'active',
+          currentEmail: viewMode === 'companies' ? (adminMap[item.id] || '') : (item.email || ''),
+          newEmail: ''
+      });
+      setShowEditModal(true);
   };
 
-  const filtered = companies.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  // --- HELPERS VISUALES ---
+  const getBusinessVisuals = (type: string) => {
+      const t = (type || '').toLowerCase();
+      switch (t) {
+          case 'pizzeria': return { icon: <Pizza size={20} className="text-orange-600" />, bg: 'bg-orange-100', label: 'Pizzería' };
+          case 'cerveceria': return { icon: <Beer size={20} className="text-yellow-600" />, bg: 'bg-yellow-100', label: 'Cervecería' };
+          case 'restaurante': return { icon: <UtensilsCrossed size={20} className="text-blue-600" />, bg: 'bg-blue-100', label: 'Restaurante' };
+          case 'cafeteria': return { icon: <Coffee size={20} className="text-amber-800" />, bg: 'bg-amber-100', label: 'Cafetería' };
+          default: return { icon: <Building2 size={20} className="text-gray-500" />, bg: 'bg-gray-100', label: t || 'Empresa' };
+      }
+  };
 
-  if (loading) return <div className="p-10 text-center animate-pulse text-gray-500">Cargando Dashboard SaaS...</div>;
+  const getStaffVisuals = (role: string) => {
+      const r = (role || '').toLowerCase();
+      switch (r) {
+          case 'admin': return { icon: <ShieldCheck size={20} className="text-purple-600" />, bg: 'bg-purple-100', label: 'Administrador' };
+          case 'cashier': 
+          case 'cajero': return { icon: <CreditCard size={20} className="text-green-600" />, bg: 'bg-green-100', label: 'Cajero' };
+          case 'cocina': return { icon: <ChefHat size={20} className="text-orange-600" />, bg: 'bg-orange-100', label: 'Cocina' };
+          case 'waiter':
+          case 'mozo': return { icon: <User size={20} className="text-blue-600" />, bg: 'bg-blue-100', label: 'Camarero' };
+          default: return { icon: <Briefcase size={20} className="text-gray-500" />, bg: 'bg-gray-100', label: r || 'Empleado' };
+      }
+  };
+
+  const filtered = items.filter(i => (i.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+
+  if (loading) return <div className="p-10 text-center animate-pulse text-gray-500">Cargando datos...</div>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
-      {/* HEADER */}
+      {/* HEADER DINÁMICO */}
       <div className="flex justify-between items-center mb-6">
         <div>
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><ShieldCheck className="text-purple-600"/> Gestión SaaS</h2>
-            <p className="text-sm text-gray-500">Administración global de empresas.</p>
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                {viewMode === 'companies' ? <ShieldCheck className="text-purple-600"/> : <UserCog className="text-blue-600"/>} 
+                {viewMode === 'companies' ? 'Usuarios / Negocios' : 'Personal del Negocio'}
+            </h2>
+            <p className="text-sm text-gray-500">
+                {viewMode === 'companies' ? 'Administración global de empresas SaaS.' : 'Gestión de empleados y roles.'}
+            </p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-md transition-all">
-            <Plus size={20} /> Nuevo Cliente
+        <button onClick={() => setShowCreateModal(true)} className={`${viewMode === 'companies' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-md transition-all`}>
+            <Plus size={20} /> {viewMode === 'companies' ? 'Nuevo Cliente' : 'Nuevo Empleado'}
         </button>
       </div>
 
       {/* SEARCH */}
       <div className="bg-white p-3 rounded-xl border border-gray-200 mb-6 flex items-center gap-2 shadow-sm">
         <Search className="text-gray-400" size={20}/>
-        <input type="text" placeholder="Buscar empresa..." className="flex-1 outline-none text-gray-700" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
+        <input type="text" placeholder={viewMode === 'companies' ? "Buscar empresa..." : "Buscar empleado..."} className="flex-1 outline-none text-gray-700" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
       </div>
 
       {/* TABLA PRINCIPAL */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <table className="w-full text-left">
             <thead className="bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase">
-                <tr><th className="p-4">Negocio</th><th className="p-4">Admin Principal</th><th className="p-4 text-center">Estado</th><th className="p-4 text-right">Acciones</th></tr>
+                <tr>
+                    <th className="p-4">{viewMode === 'companies' ? 'Negocio' : 'Nombre'}</th>
+                    <th className="p-4">{viewMode === 'companies' ? 'Admin Email' : 'Contacto'}</th>
+                    {viewMode === 'companies' && <th className="p-4 text-center">Estado</th>}
+                    <th className="p-4 text-right">Acciones</th>
+                </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-                {filtered.map((co) => (
-                    <tr key={co.id} className="hover:bg-gray-50">
-                        <td className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-gray-100 p-2 rounded-lg">{getIconByType(co.business_type)}</div>
-                                <div><p className="font-bold text-gray-800">{co.name}</p><p className="text-xs text-gray-400 capitalize">{co.business_type}</p></div>
-                            </div>
-                        </td>
-                        <td className="p-4 text-sm text-gray-600 font-medium">
-                            {adminMap[co.id] ? <span className="flex items-center gap-1"><UserCog size={14} className="text-purple-500"/> {adminMap[co.id]}</span> : <span className="text-gray-300 italic">Sin asignar</span>}
-                        </td>
-                        <td className="p-4 text-center">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${co.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>{co.status === 'active' ? 'Activo' : 'Inactivo'}</span>
-                        </td>
-                        <td className="p-4 text-right flex justify-end gap-2">
-                            <button onClick={() => openEditModal(co)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit size={18}/></button>
-                            <button onClick={() => handleDelete(co.id, co.name)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={18}/></button>
-                        </td>
-                    </tr>
-                ))}
+                {filtered.map((item) => {
+                    const visuals = viewMode === 'companies' 
+                        ? getBusinessVisuals(item.business_type)
+                        : getStaffVisuals(item.role);
+                    
+                    const secondaryText = viewMode === 'companies' 
+                        ? adminMap[item.id] 
+                        : item.email;
+
+                    return (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                            <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2.5 rounded-xl ${visuals.bg}`}>
+                                        {visuals.icon}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-800">{item.name}</p>
+                                        <p className="text-xs text-gray-400 capitalize">{visuals.label}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="p-4 text-sm text-gray-600 font-medium">
+                                {secondaryText ? 
+                                    <span className="flex items-center gap-1">
+                                        {viewMode === 'companies' ? <UserCog size={14} className="text-purple-500"/> : <Mail size={14} className="text-gray-400"/>} 
+                                        {secondaryText}
+                                    </span> 
+                                    : <span className="text-gray-300 italic">Sin dato</span>
+                                }
+                            </td>
+                            
+                            {viewMode === 'companies' && (
+                                <td className="p-4 text-center">
+                                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${item.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>{item.status === 'active' ? 'Activo' : 'Inactivo'}</span>
+                                </td>
+                            )}
+
+                            <td className="p-4 text-right">
+                                <div className="flex justify-end gap-2">
+                                    <button onClick={() => openEditModal(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Editar"><Pencil size={18} /></button>
+                                    <button onClick={() => handleDelete(item.id, item.name)} className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors" title="Eliminar"><Trash2 size={18} /></button>
+                                </div>
+                            </td>
+                        </tr>
+                    );
+                })}
             </tbody>
         </table>
-      </div>
+    </div>
 
-      {/* MODAL CREAR CLIENTE (Simplificado) */}
-      {showCreateModal && (
+    {/* MODAL CREAR (Unificado) */}
+    {showCreateModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
-                <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg text-purple-700">Nuevo Cliente</h3><button onClick={() => setShowCreateModal(false)}><X/></button></div>
-                <form onSubmit={handleCreateClient} className="space-y-4">
-                    <input required placeholder="Nombre Fantasía" className="w-full p-2 border rounded" value={createData.businessName} onChange={e => setCreateData({...createData, businessName: e.target.value})} />
-                    <select className="w-full p-2 border rounded bg-white" value={createData.businessType} onChange={e => setCreateData({...createData, businessType: e.target.value})}>
-                        <option value="pizzeria">🍕 Pizzería</option><option value="cerveceria">🍺 Cervecería</option><option value="restaurante">🍽️ Restaurante</option><option value="cafeteria">☕ Cafetería</option>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-lg text-gray-800">{viewMode === 'companies' ? 'Nueva Empresa' : 'Nuevo Empleado'}</h3>
+                    <button onClick={() => setShowCreateModal(false)}><X/></button>
+                </div>
+                <form onSubmit={handleCreate} className="space-y-4">
+                    <input required placeholder={viewMode === 'companies' ? "Nombre Fantasía" : "Nombre Completo"} className="w-full p-2 border rounded" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                    
+                    <select className="w-full p-2 border rounded bg-white" value={formData.typeOrRole} onChange={e => setFormData({...formData, typeOrRole: e.target.value})}>
+                        {viewMode === 'companies' ? (
+                            <>
+                                <option value="pizzeria">🍕 Pizzería</option>
+                                <option value="cerveceria">🍺 Cervecería</option>
+                                <option value="restaurante">🍽️ Restaurante</option>
+                                <option value="cafeteria">☕ Cafetería</option>
+                            </>
+                        ) : (
+                            <>
+                                <option value="cashier">💰 Cajero</option>
+                                <option value="cocina">👨‍🍳 Cocina</option>
+                                <option value="admin">🛡️ Admin</option>
+                                <option value="waiter">💁 Mozo</option>
+                            </>
+                        )}
                     </select>
-                    <input required type="email" placeholder="Email Admin" className="w-full p-2 border rounded" value={createData.adminEmail} onChange={e => setCreateData({...createData, adminEmail: e.target.value})} />
-                    <input required type="password" placeholder="Contraseña" className="w-full p-2 border rounded" value={createData.adminPassword} onChange={e => setCreateData({...createData, adminPassword: e.target.value})} />
-                    <button type="submit" disabled={isProcessing} className="w-full bg-purple-600 text-white font-bold py-3 rounded hover:bg-purple-700">{isProcessing ? 'Creando...' : 'Registrar'}</button>
+                    
+                    <input required type="email" placeholder={viewMode === 'companies' ? "Email Admin" : "Email Empleado"} className="w-full p-2 border rounded" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    <input required type="password" placeholder="Contraseña" className="w-full p-2 border rounded" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                    
+                    <button type="submit" disabled={isProcessing} className={`w-full ${viewMode === 'companies' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold py-3 rounded`}>
+                        {isProcessing ? 'Creando...' : 'Registrar'}
+                    </button>
                 </form>
             </div>
         </div>
-      )}
+    )}
 
-      {/* MODAL EDITAR CLIENTE (Con Asignación de Admin) */}
-      {showEditModal && (
+    {/* MODAL EDITAR (Adaptativo) */}
+    {showEditModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="bg-gray-900 p-4 flex justify-between items-center text-white">
-                    <h3 className="font-bold flex items-center gap-2"><Edit size={18}/> Editar Empresa</h3>
+                    <h3 className="font-bold flex items-center gap-2"><Pencil size={18}/> Editar</h3>
                     <button onClick={() => setShowEditModal(false)}><X/></button>
                 </div>
                 
-                <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
-                    {/* Datos Básicos */}
+                <form onSubmit={handleEditSave} className="p-6 space-y-4">
                     <div>
                         <label className="text-xs font-bold text-gray-500 uppercase">Nombre</label>
-                        <input className="w-full p-2 border rounded focus:ring-2 focus:ring-purple-500 outline-none" 
-                            value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} />
+                        <input className="w-full p-2 border rounded" value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} />
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Rubro</label>
-                            <select className="w-full p-2 border rounded bg-white" value={editData.business_type} onChange={e => setEditData({...editData, business_type: e.target.value})}>
-                                <option value="pizzeria">Pizzería</option><option value="cerveceria">Cervecería</option><option value="restaurante">Restaurante</option><option value="cafeteria">Cafetería</option>
-                            </select>
-                        </div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase">{viewMode === 'companies' ? 'Rubro' : 'Rol'}</label>
+                        <select className="w-full p-2 border rounded bg-white" value={editData.typeOrRole} onChange={e => setEditData({...editData, typeOrRole: e.target.value})}>
+                            {viewMode === 'companies' ? (
+                                <>
+                                    <option value="pizzeria">Pizzería</option>
+                                    <option value="cerveceria">Cervecería</option>
+                                    <option value="restaurante">Restaurante</option>
+                                    <option value="cafeteria">Cafetería</option>
+                                </>
+                            ) : (
+                                <>
+                                    <option value="cashier">Cajero</option>
+                                    <option value="cocina">Cocina</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="waiter">Mozo</option>
+                                </>
+                            )}
+                        </select>
+                    </div>
+
+                    {viewMode === 'companies' && (
                         <div>
                             <label className="text-xs font-bold text-gray-500 uppercase">Estado</label>
                             <div className="flex items-center gap-2 mt-2">
@@ -318,36 +522,23 @@ const handleCreateClient = async (e: React.FormEvent) => {
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    <div className="h-px bg-gray-100 my-2"></div>
+                    {viewMode === 'companies' && (
+                        <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200 mt-2">
+                            <label className="text-xs font-bold text-yellow-800 uppercase flex items-center gap-1 mb-1"><UserCog size={14}/> Reasignar Admin</label>
+                            <p className="text-xs text-gray-600 mb-2">Actual: <strong>{editData.currentEmail}</strong></p>
+                            <input type="email" placeholder="Nuevo Email" className="w-full p-2 border border-yellow-300 rounded text-sm" value={editData.newEmail} onChange={e => setEditData({...editData, newEmail: e.target.value})} />
+                        </div>
+                    )}
 
-                    {/* Sección Admin */}
-                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                        <label className="text-xs font-bold text-yellow-800 uppercase flex items-center gap-1 mb-1">
-                            <UserCog size={14}/> Reasignar Admin
-                        </label>
-                        <p className="text-xs text-gray-600 mb-2">Admin actual: <strong>{editData.currentAdminEmail}</strong></p>
-                        
-                        <input 
-                            type="email" 
-                            placeholder="Nuevo Email (Debe estar registrado)" 
-                            className="w-full p-2 border border-yellow-300 rounded focus:ring-2 focus:ring-yellow-500 outline-none text-sm"
-                            value={editData.newAdminEmail}
-                            onChange={e => setEditData({...editData, newAdminEmail: e.target.value})}
-                        />
-                        <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
-                            <AlertTriangle size={10}/> Se transferirán los permisos de admin a este usuario.
-                        </p>
-                    </div>
-
-                    <button type="submit" disabled={isProcessing} className="w-full bg-purple-600 text-white font-bold py-3 rounded-lg hover:bg-purple-700 shadow-md transition-all mt-2">
+                    <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md mt-2">
                         {isProcessing ? 'Guardando...' : 'Guardar Cambios'}
                     </button>
                 </form>
             </div>
         </div>
-      )}
+    )}
     </div>
   );
 }
