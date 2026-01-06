@@ -7,10 +7,25 @@ import { CheckCircle, Clock, RefreshCw, ChefHat, XCircle, Printer } from 'lucide
 const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: string }>(({ order, companyName }, ref) => {
   if (!order) return null;
 
+  // Normalizamos el texto de pago
+  const paymentMethod = order.payment_type ? order.payment_type.toUpperCase() : 'EFECTIVO';
+
+  // --- LÓGICA DE ORDENAMIENTO ---
+  const sortedItems = [...(order.order_items || [])].sort((a: any, b: any) => {
+    const catA = a.product?.category || '';
+    const catB = b.product?.category || '';
+    const nameA = a.product?.name || '';
+    const nameB = b.product?.name || '';
+
+    const catComparison = catA.localeCompare(catB);
+    if (catComparison !== 0) return catComparison;
+    return nameA.localeCompare(nameB);
+  });
+
   return (
     <div ref={ref} className="hidden print:block p-4 bg-white text-black font-mono text-sm w-[80mm] mx-auto leading-tight">
       
-      {/* 1. HEADER LIMPIO (Solo Nombre Negocio + Fecha) */}
+      {/* 1. HEADER */}
       <div className="text-center mb-4 border-b border-black pb-2 border-dashed">
         <h2 className="font-black text-2xl uppercase leading-none mb-2">
             {companyName || 'FLUXO KITCHEN'}
@@ -20,17 +35,30 @@ const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: str
         </p>
       </div>
 
-      {/* 2. INFO CLIENTE (Desglose Delivery) */}
+      {/* 2. INFO TICKET, PAGO Y CLIENTE */}
       <div className="mb-4 border-b border-black border-dashed pb-2">
-        <div className="flex justify-between font-bold text-xl mb-3">
+        <div className="flex justify-between items-end font-bold text-xl mb-1">
           <span>TICKET:</span>
           <span>#{order.ticket_number}</span>
+        </div>
+
+        <div className="text-right mb-3">
+             <span className="text-sm font-black border-2 border-black px-2 py-0.5 rounded-sm uppercase">
+                PAGO: {paymentMethod}
+             </span>
         </div>
         
         <div className="text-sm font-bold uppercase space-y-2">
             <div>
                 <span className="text-xs font-normal block mb-0.5">Cliente / Dirección:</span>
+                
+                {/* Nombre del Cliente */}
                 <span className="text-base block">{order.client?.name || 'Mostrador'}</span>
+                
+                {/* --- NUEVO: DIRECCIÓN AGREGADA --- */}
+                <span className="text-sm block font-medium mt-0.5">
+                    {order.client?.address || 'Retira en local / Sin dirección'}
+                </span>
             </div>
             
             <div>
@@ -44,14 +72,16 @@ const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: str
         </p>
       </div>
 
-      {/* ITEMS */}
+      {/* ITEMS (ORDENADOS) */}
       <div className="border-b border-black border-dashed py-2 mb-4">
         <ul className="space-y-3">
-            {order.order_items?.map((item: any, index: number) => (
+            {sortedItems.map((item: any, index: number) => (
                 <li key={index} className="flex gap-2 items-start">
                     <span className="font-black text-lg w-6 text-right leading-none">{item.quantity}</span>
                     <span className="mx-1 pt-1">x</span>
-                    <span className="flex-1 text-lg font-bold uppercase leading-none pt-0.5">{item.product?.name || 'Item'}</span>
+                    <span className="flex-1 text-lg font-bold uppercase leading-none pt-0.5">
+                        {item.product?.name || 'Item'}
+                    </span>
                 </li>
             ))}
         </ul>
@@ -91,18 +121,20 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
     documentTitle: printingOrder ? `Comanda-${printingOrder.ticket_number}` : 'Comanda',
   });
 
-// --- CARGA DE DATOS REALES (SUPABASE) ---
+  // --- CARGA DE DATOS REALES (SUPABASE) ---
   const fetchOrders = async () => {
     setLoading(true);
     try {
+        // ACTUALIZADO: Se agregó 'address' a la relación client:clients(...)
+        // SE RESPETÓ LA REGLA: Sin comentarios dentro del string
         const { data: realOrders, error } = await supabase
         .from('orders')
         .select(`
             *,
-            client:clients(name, phone),
+            client:clients(name, phone, address),
             order_items (
                 quantity,
-                product:products(name)
+                product:products(name, category)
             )
         `)
         .eq('status', 'pendiente')

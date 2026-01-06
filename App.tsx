@@ -9,6 +9,7 @@ import Promotions from './components/Promotions';
 import Users from './components/Users';
 import History from './components/History';
 import Reservations from './components/Reservations';
+import Reports from './components/Reports';
 
 // Iconos
 import { 
@@ -16,15 +17,17 @@ import {
   History as HistoryIcon, UserCog, LogOut, MinusCircle, 
   UserPlus, Key, X, Search, CalendarClock, Menu, Receipt,
   LayoutDashboard, Monitor, Crown, BarChart3, Briefcase, Tag,
-  Building2, Flame, Minus, Plus, Trash2 
+  Building2, Flame, Minus, Plus, Trash2,
+  Banknote, QrCode, CreditCard, MapPin, Phone, Star // <--- STAR AGREGADO
 } from 'lucide-react';
 
 // --- CONSTANTES DEMO ---
 const DEMO_PRODUCTS = [
-  { id: '1', name: 'Muzzarella (Demo)', price: 8000, category: 'Pizzas', active: true },
-  { id: '2', name: 'Coca Cola 1.5L (Demo)', price: 2500, category: 'Bebidas', active: true },
-  { id: '3', name: 'Empanada Carne (Demo)', price: 1200, category: 'Empanadas', active: true },
-  { id: '4', name: 'Hamburguesa Completa (Demo)', price: 6500, category: 'Hamburguesas', active: true },
+  { id: '1', name: 'Muzzarella (Demo)', price: 8000, category: 'Pizzas', active: true, is_favorite: true },
+  { id: '2', name: 'Coca Cola 1.5L (Demo)', price: 2500, category: 'Bebidas', active: true, is_favorite: false },
+  { id: '3', name: 'Empanada Carne (Demo)', price: 1200, category: 'Empanadas', active: true, is_favorite: false },
+  { id: '4', name: 'Hamburguesa Completa (Demo)', price: 6500, category: 'Hamburguesas', active: true, is_favorite: true },
+  { id: '5', name: 'Pizza Mitad Muzzarella (Demo)', price: 8500, category: 'Pizzas', active: true, is_favorite: false },
 ];
 
 function App() {
@@ -53,12 +56,22 @@ function App() {
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
-  const [quickCustomerName, setQuickCustomerName] = useState('');
+  
+  // DATOS COMPLETOS DE CLIENTE
+  const [newClientData, setNewClientData] = useState({
+    name: '',
+    address: '',
+    phone: ''
+  });
+  
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [showMobileMenu, setShowMobileMenu] = useState(false); 
+  
+  // ESTADO: FORMA DE PAGO
+  const [paymentType, setPaymentType] = useState('efectivo');
   
   // Ref para cerrar dropdown al hacer click afuera
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -69,7 +82,8 @@ function App() {
   const isSuperAdmin = userRole === 'super_admin';
   const isAdmin = userRole === 'admin' || userRole === 'super_admin' || isDemo;
 
-  const categories = ['Todo', 'Promociones', 'Pizzas', 'Milanesas', 'Hamburguesas', 'Empanadas', 'Bebidas', 'Postres'];
+  // --- ACTUALIZADO: NUEVAS CATEGORÍAS ---
+  const categories = ['Todo', 'Promociones', 'Pizzas', 'Milanesas', 'Hamburguesas', 'Empanadas', 'Ensaladas', 'Mitades', 'Bebidas', 'Postres'];
 
   // ==============================================================================
   // 1. EFECTOS Y CARGA DE DATOS
@@ -99,6 +113,7 @@ function App() {
     setMobileView('products');
     setDemoOrders([]);
     setIsProcessing(false);
+    setPaymentType('efectivo');
     
     console.log("♻️ Sesión cambiada: Estado limpiado por seguridad.");
   }, [session?.user?.id]);
@@ -231,6 +246,7 @@ function App() {
     }
 
     try {
+        // Consultamos productos incluyendo is_favorite (select * lo trae)
         const { data: prodData } = await supabase.from('products').select('*'); 
         if (prodData) setProducts(prodData);
 
@@ -298,6 +314,33 @@ function App() {
       }
   };
 
+  // --- FILTRO Y ORDENAMIENTO AVANZADO (Favoritos Primero) ---
+  const getFilteredProducts = () => {
+    let result = products;
+
+    // 1. Filtrado
+    if (selectedCategory === 'Mitades') {
+        // Filtro especial: Buscar "Mitad" en el nombre
+        result = result.filter(p => p.name.toLowerCase().includes('mitad'));
+    } else if (selectedCategory !== 'Todo') {
+        // Filtro estándar por categoría
+        result = result.filter(p => p.category === selectedCategory);
+    }
+
+    // 2. Ordenamiento: Favoritos primero, luego nombre
+    result = result.sort((a, b) => {
+        // Si uno es favorito y el otro no, el favorito va primero
+        if (a.is_favorite === true && b.is_favorite !== true) return -1;
+        if (a.is_favorite !== true && b.is_favorite === true) return 1;
+        // Si ambos son iguales (ambos favoritos o ambos no), orden alfabético secundario
+        return 0; 
+    });
+
+    return result;
+  };
+
+  const filteredProducts = getFilteredProducts();
+
   const calculateTotals = () => {
     let tempCart = [...cart];
     let appliedDiscounts: any[] = [];
@@ -351,7 +394,6 @@ function App() {
   };
 
   const { finalTotal, appliedDiscounts } = calculateTotals();
-  const filteredProducts = selectedCategory === 'Todo' ? products : products.filter(p => p.category === selectedCategory);
   const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()));
 
   const groupedCart = Object.values(cart.reduce((acc: any, item: any) => {
@@ -366,6 +408,31 @@ function App() {
   // ==============================================================================
   // 3. HANDLERS
   // ==============================================================================
+
+  // --- TOGGLE FAVORITO ---
+  const handleToggleFavorite = async (e: React.MouseEvent, product: any) => {
+    e.stopPropagation(); // Evitar agregar al carrito
+    
+    // Actualización Optimista UI
+    const newStatus = !product.is_favorite;
+    setProducts(prev => prev.map(p => p.id === product.id ? {...p, is_favorite: newStatus} : p));
+
+    if (isDemo) return; // En demo solo actualiza memoria local
+
+    // Actualización DB
+    try {
+        const { error } = await supabase
+            .from('products')
+            .update({ is_favorite: newStatus })
+            .eq('id', product.id);
+        
+        if (error) {
+            console.error(error);
+            // Revertir si falla
+            setProducts(prev => prev.map(p => p.id === product.id ? {...p, is_favorite: !newStatus} : p));
+        }
+    } catch (err) { console.error(err); }
+  };
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
@@ -385,7 +452,7 @@ function App() {
             };
             setDemoOrders(prev => [fakeOrder, ...prev]);
             alert(`(Simulación) Ticket #${fakeTicket} enviado a Cocina correctamente.`);
-            setCart([]); setSelectedCustomerId(''); setClientSearchTerm(''); setMobileView('products'); setIsProcessing(false);
+            setCart([]); setSelectedCustomerId(''); setClientSearchTerm(''); setMobileView('products'); setIsProcessing(false); setPaymentType('efectivo');
         }, 600); 
         return; 
     }
@@ -397,7 +464,14 @@ function App() {
     }
 
     try {
-      const { data: orderData, error: orderError } = await supabase.from('orders').insert([{ client_id: selectedCustomerId, total: finalTotal, status: 'pendiente', payment_type: 'efectivo', user_id: session.user.id }]).select().single();
+      const { data: orderData, error: orderError } = await supabase.from('orders').insert([{ 
+          client_id: selectedCustomerId, 
+          total: finalTotal, 
+          status: 'pendiente', 
+          payment_type: paymentType, 
+          user_id: session.user.id 
+      }]).select().single();
+      
       if (orderError) throw orderError;
 
       const itemCounts: any = {};
@@ -410,29 +484,55 @@ function App() {
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
       if (itemsError) throw itemsError;
       
-      await logAction('VENTA', `Ticket #${orderData.ticket_number} - $${finalTotal}`, 'Caja');
+      await logAction('VENTA', `Ticket #${orderData.ticket_number} - $${finalTotal} (${paymentType})`, 'Caja');
       alert(`¡Ticket #${orderData.ticket_number || 'OK'} enviado!`);
-      setCart([]); setSelectedCustomerId(''); setClientSearchTerm(''); setMobileView('products');
+      
+      // Limpieza Post Venta
+      setCart([]); 
+      setSelectedCustomerId(''); 
+      setClientSearchTerm(''); 
+      setMobileView('products');
+      setPaymentType('efectivo');
 
     } catch (error: any) { alert("Error: " + error.message); } 
     finally { setIsProcessing(false); }
   };
 
   const handleQuickCustomerCreate = async () => {
-    if(!quickCustomerName) return;
+    if(!newClientData.name.trim()) return alert("El nombre es obligatorio.");
+
     if (isDemo) { 
         const fakeId = `temp-${Date.now()}`;
-        setCustomers(prev => [...prev, { id: fakeId, name: quickCustomerName }]);
-        setSelectedCustomerId(fakeId); setClientSearchTerm(quickCustomerName);
-        setShowQuickCustomer(false); setQuickCustomerName('');
-        alert("(Demo) Cliente creado en memoria."); return; 
+        const fakeClient = { id: fakeId, ...newClientData };
+        setCustomers(prev => [...prev, fakeClient]);
+        
+        setSelectedCustomerId(fakeId); 
+        setClientSearchTerm(fakeClient.name);
+        
+        setShowQuickCustomer(false); 
+        setNewClientData({ name: '', address: '', phone: '' });
+        alert("(Demo) Cliente creado en memoria."); 
+        return; 
     }
 
     try {
-        const { data, error } = await supabase.from('clients').insert([{ name: quickCustomerName, user_id: session.user.id }]).select().single();
+        const { data, error } = await supabase.from('clients').insert([{ 
+            name: newClientData.name, 
+            address: newClientData.address,
+            phone: newClientData.phone,
+            user_id: session.user.id 
+        }]).select().single();
+
         if (error) throw error;
+        
         await logAction('CREAR_CLIENTE', `Rápido: ${data.name}`, 'Clientes');
-        setCustomers([data, ...customers]); setSelectedCustomerId(data.id); setClientSearchTerm(data.name); setShowQuickCustomer(false); setQuickCustomerName('');
+        
+        setCustomers([data, ...customers]); 
+        setSelectedCustomerId(data.id); 
+        setClientSearchTerm(data.name); 
+        
+        setShowQuickCustomer(false); 
+        setNewClientData({ name: '', address: '', phone: '' });
     } catch (error: any) { alert("Error: " + error.message); }
   };
 
@@ -472,11 +572,7 @@ function App() {
           <button onClick={handleLogout} className="text-red-300"><LogOut size={20}/></button>
         </div>
         <div className="flex-1 overflow-hidden">
-            <Kitchen 
-                demoOrders={demoOrders} 
-                onDemoComplete={(id: any) => setDemoOrders(prev => prev.filter(o => o.id !== id))} 
-                companyName={companyName} // <--- SE PASA LA PROP AQUÍ
-            />
+            <Kitchen demoOrders={demoOrders} onDemoComplete={(id: any) => setDemoOrders(prev => prev.filter(o => o.id !== id))} companyName={companyName} />
         </div>
       </div>
     );
@@ -609,9 +705,21 @@ function App() {
               </header>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pb-24 md:pb-0"> 
                 {selectedCategory !== 'Promociones' && filteredProducts.map((product) => (
-                  <div key={product.id} onClick={() => addToCart(product)} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex justify-between items-center md:block md:p-4 hover:shadow-md cursor-pointer active:scale-95 duration-100 group">
+                  <div key={product.id} onClick={() => addToCart(product)} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex justify-between items-center md:block md:p-4 hover:shadow-md cursor-pointer active:scale-95 duration-100 group relative">
+                    
+                    {/* BOTÓN FAVORITO */}
+                    <button 
+                        onClick={(e) => handleToggleFavorite(e, product)}
+                        className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-gray-100 z-10 transition-colors"
+                    >
+                        <Star 
+                            size={18} 
+                            className={product.is_favorite ? "fill-yellow-400 text-yellow-400" : "text-gray-300 hover:text-yellow-400"} 
+                        />
+                    </button>
+
                     <div className="flex-1">
-                      <h3 className="font-bold text-gray-800 text-sm md:text-lg mb-1 group-hover:text-orange-600 transition-colors">{product.name}</h3>
+                      <h3 className="font-bold text-gray-800 text-sm md:text-lg mb-1 group-hover:text-orange-600 transition-colors pr-6">{product.name}</h3>
                       <span className="text-[10px] md:text-xs bg-gray-50 px-2 py-1 rounded text-gray-500 border border-gray-100">{product.category}</span>
                     </div>
                     <div className="font-bold text-base md:text-xl text-orange-600 md:mt-2 whitespace-nowrap ml-2">$ {product.price.toLocaleString('es-AR')}</div>
@@ -681,6 +789,23 @@ function App() {
                 {appliedDiscounts.length > 0 && <div className="mt-4 pt-4 border-t border-dashed"><p className="text-xs font-bold uppercase text-gray-500 mb-2">Descuentos Aplicados</p>{appliedDiscounts.map((d, i) => <div key={i} className="flex justify-between text-green-600 text-sm bg-green-50 p-2 rounded mb-1"><span>{d.name}</span><span>- ${d.amount}</span></div>)}</div>}
               </div>
               <div className="p-6 bg-white border-t md:relative fixed bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto z-20 pb-8 md:pb-6 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+                
+                {/* SELECTOR DE FORMA DE PAGO */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                    <button onClick={() => setPaymentType('efectivo')} className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${paymentType === 'efectivo' ? 'bg-gray-800 text-white border-gray-800 ring-2 ring-gray-200' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                        <Banknote size={18} className="mb-1"/>
+                        <span className="text-[10px] font-bold uppercase">Efectivo</span>
+                    </button>
+                    <button onClick={() => setPaymentType('transferencia')} className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${paymentType === 'transferencia' ? 'bg-gray-800 text-white border-gray-800 ring-2 ring-gray-200' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                        <QrCode size={18} className="mb-1"/>
+                        <span className="text-[10px] font-bold uppercase">Transf.</span>
+                    </button>
+                    <button onClick={() => setPaymentType('tarjeta')} className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${paymentType === 'tarjeta' ? 'bg-gray-800 text-white border-gray-800 ring-2 ring-gray-200' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                        <CreditCard size={18} className="mb-1"/>
+                        <span className="text-[10px] font-bold uppercase">Tarjeta</span>
+                    </button>
+                </div>
+
                 <div className="flex justify-between mb-4 text-2xl font-bold"><span>Total</span><span className="text-orange-600">$ {finalTotal.toLocaleString('es-AR')}</span></div>
                 <button onClick={handleCheckout} disabled={cart.length === 0 || isProcessing} className="w-full bg-gray-900 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">{isProcessing ? 'Procesando...' : <><Receipt size={20}/> Confirmar Pedido</>}</button>
               </div>
@@ -694,7 +819,7 @@ function App() {
                 <Kitchen 
                     demoOrders={demoOrders} 
                     onDemoComplete={(id: any) => setDemoOrders(prev => prev.filter(o => o.id !== id))} 
-                    companyName={companyName} // <--- SE PASA LA PROP AQUÍ TAMBIÉN
+                    companyName={companyName} 
                 />
             )}
             {activeTab === 'customers' && <Customers />}
@@ -706,16 +831,63 @@ function App() {
             {isSuperAdmin && activeTab === 'clients' && <Users />}
             {isAdmin && !isSuperAdmin && activeTab === 'users' && <Users />}
             
-            {isAdmin && activeTab === 'reports' && <div className="p-10 text-center text-gray-500">Reportes en construcción...</div>}
+            {isAdmin && activeTab === 'reports' && (
+            <div className="h-full w-full">
+                <Reports />
+            </div>
+        )}
         </div>
 
-        {/* MODALES */}
+        {/* --- MODAL NUEVO CLIENTE --- */}
         {showQuickCustomer && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4 animate-in fade-in">
             <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
-              <h3 className="text-xl font-bold mb-4">Nuevo Cliente</h3>
-              <input autoFocus className="w-full p-3 border rounded-lg mb-4 text-lg outline-none focus:ring-2 focus:ring-orange-500" placeholder="Nombre completo" value={quickCustomerName} onChange={e => setQuickCustomerName(e.target.value)} />
-              <div className="flex gap-2"><button onClick={() => setShowQuickCustomer(false)} className="flex-1 py-3 text-gray-500 hover:bg-gray-50 rounded-lg">Cancelar</button><button onClick={handleQuickCustomerCreate} className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700">Guardar</button></div>
+              <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold">Nuevo Cliente</h3>
+                  <button onClick={() => setShowQuickCustomer(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
+              </div>
+              
+              <div className="space-y-3 mb-6">
+                  {/* INPUT NOMBRE */}
+                  <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><UsersIcon size={18} /></div>
+                      <input 
+                        autoFocus 
+                        className="w-full pl-10 p-3 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500" 
+                        placeholder="Nombre Completo" 
+                        value={newClientData.name} 
+                        onChange={e => setNewClientData({...newClientData, name: e.target.value})} 
+                      />
+                  </div>
+
+                  {/* INPUT DIRECCIÓN */}
+                  <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><MapPin size={18} /></div>
+                      <input 
+                        className="w-full pl-10 p-3 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500" 
+                        placeholder="Dirección / Altura" 
+                        value={newClientData.address} 
+                        onChange={e => setNewClientData({...newClientData, address: e.target.value})} 
+                      />
+                  </div>
+
+                  {/* INPUT TELÉFONO */}
+                  <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><Phone size={18} /></div>
+                      <input 
+                        type="tel"
+                        className="w-full pl-10 p-3 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500" 
+                        placeholder="Teléfono / WhatsApp" 
+                        value={newClientData.phone} 
+                        onChange={e => setNewClientData({...newClientData, phone: e.target.value})} 
+                      />
+                  </div>
+              </div>
+
+              <div className="flex gap-2">
+                  <button onClick={() => setShowQuickCustomer(false)} className="flex-1 py-3 text-gray-500 hover:bg-gray-50 rounded-lg transition-colors font-medium">Cancelar</button>
+                  <button onClick={handleQuickCustomerCreate} className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 transition-colors shadow-sm">Guardar</button>
+              </div>
             </div>
           </div>
         )}

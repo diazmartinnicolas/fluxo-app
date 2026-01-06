@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { logAction } from '../services/audit'; // <--- LOGGER
-import { Package, Search, Plus, Trash, Edit, X, Save, AlertTriangle, Lock } from 'lucide-react';
+import { logAction } from '../services/audit'; 
+import { Package, Search, Plus, Trash, Lock } from 'lucide-react';
 
 export default function Inventory() {
   const [products, setProducts] = useState<any[]>([]);
@@ -13,7 +13,8 @@ export default function Inventory() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', price: '', category: 'Pizzas' });
 
-  const categories = ['Pizzas', 'Milanesas', 'Hamburguesas', 'Empanadas', 'Bebidas', 'Postres'];
+  // --- ACTUALIZADO: Agregada categoría 'Ensaladas' ---
+  const categories = ['Pizzas', 'Milanesas', 'Hamburguesas', 'Empanadas', 'Ensaladas', 'Bebidas', 'Postres'];
 
   useEffect(() => {
     fetchProducts();
@@ -119,6 +120,8 @@ export default function Inventory() {
                   <div className="space-y-3">
                       <input placeholder="Nombre (Ej: Pizza Rúcula)" className="w-full p-2 border rounded" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                       <input type="number" placeholder="Precio (Ej: 12000)" className="w-full p-2 border rounded" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                      
+                      {/* SELECTOR CON CATEGORÍA ENSALADAS */}
                       <select className="w-full p-2 border rounded bg-white" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                           {categories.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
