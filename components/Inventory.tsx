@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { logAction } from '../services/audit';
+import { z } from 'zod'; 
+import { ProductSchema } from '../schemas/products';
 import { 
   Package, Plus, Search, Edit, Trash2, X, 
   Save, AlertCircle, CheckCircle, Filter 
@@ -78,10 +80,16 @@ export default function Inventory() {
     setIsModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!formData.name || formData.price < 0) return alert("Nombre y precio válidos requeridos.");
-
+const handleSave = async () => {
+    // 1. EL PORTERO DE SEGURIDAD (ZOD) 🛡️
+    // Intentamos validar los datos ANTES de hacer nada
     try {
+      // Validamos usando el esquema que creaste.
+      // Si el precio es negativo o falta nombre, esto lanza un error y salta al 'catch'
+      ProductSchema.parse(formData);
+
+      // --- SI PASA LA VALIDACIÓN, EJECUTA TU LÓGICA NORMAL ---
+      
       if (editingProduct) {
         // MODO EDICIÓN
         const { error } = await supabase
@@ -104,8 +112,17 @@ export default function Inventory() {
       // Éxito
       fetchProducts();
       setIsModalOpen(false);
+
     } catch (error: any) {
-      alert("Error guardando producto: " + error.message);
+      // 2. MANEJO DE ERRORES INTELIGENTE 🧠
+      if (error instanceof z.ZodError) {
+        // Si fue Zod quien lo detuvo (ej: precio negativo), mostramos SU mensaje
+        alert("⚠️ Validación: " + error.issues[0].message);
+      } else {
+        // Si fue la base de datos u otro error
+        console.error("Error guardando:", error);
+        alert("Error guardando producto: " + error.message);
+      }
     }
   };
 
