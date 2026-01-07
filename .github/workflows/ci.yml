@@ -1,0 +1,32 @@
+name: Fluxo Security Guard 🛡️
+
+# ¿Cuándo se activa este policía?
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-verify:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Descarga tu código del repositorio
+    - name: 📥 Descargando código de Fluxo
+      uses: actions/checkout@v4
+
+    # 2. Prepara el entorno (Node.js)
+    - name: 🟢 Instalando Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    # 3. Instala las librerías (como Vitest, React, etc.)
+    - name: 📦 Instalando dependencias
+      run: npm ci
+
+    # 4. EJECUTA LOS TESTS (El momento de la verdad)
+    - name: 🧪 Corriendo Tests de Seguridad (Vitest)
+      run: npx vitest run
