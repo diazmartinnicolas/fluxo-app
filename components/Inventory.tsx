@@ -8,31 +8,28 @@ import {
   Save, AlertCircle, CheckCircle, Filter 
 } from 'lucide-react';
 
-// Categorías del sistema (Actualizado con 'Mitades')
+// Categorías del sistema
 const CATEGORIES = [
-  'Pizzas', 
-  'Mitades', 
-  'Milanesas', 
-  'Hamburguesas', 
-  'Empanadas', 
-  'Ensaladas',
-  'Bebidas', 
-  'Postres'
+  'Pizzas', 'Mitades', 'Milanesas', 'Hamburguesas', 
+  'Empanadas', 'Ensaladas', 'Bebidas', 'Postres'
 ];
 
-export default function Inventory() {
+// 👇 1. Definimos que este componente acepta una función de aviso
+interface InventoryProps {
+    onProductUpdate?: () => void;
+}
+
+export default function Inventory({ onProductUpdate }: InventoryProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Estado del Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   
-  // Estado del Formulario
   const [formData, setFormData] = useState({
     name: '',
-    category: 'Pizzas', // Valor por defecto
+    category: 'Pizzas',
     price: 0,
     active: true,
     is_favorite: false
@@ -45,10 +42,11 @@ export default function Inventory() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // Gracias a RLS, esto solo traerá productos donde deleted_at IS NULL
+      // Filtramos explícitamente los no borrados para asegurar la consistencia
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .is('deleted_at', null) 
         .order('name');
         
       if (error) throw error;
@@ -80,18 +78,11 @@ export default function Inventory() {
     setIsModalOpen(true);
   };
 
-const handleSave = async () => {
-    // 1. EL PORTERO DE SEGURIDAD (ZOD) 🛡️
-    // Intentamos validar los datos ANTES de hacer nada
+  const handleSave = async () => {
     try {
-      // Validamos usando el esquema que creaste.
-      // Si el precio es negativo o falta nombre, esto lanza un error y salta al 'catch'
       ProductSchema.parse(formData);
 
-      // --- SI PASA LA VALIDACIÓN, EJECUTA TU LÓGICA NORMAL ---
-      
       if (editingProduct) {
-        // MODO EDICIÓN
         const { error } = await supabase
           .from('products')
           .update(formData)
@@ -100,7 +91,6 @@ const handleSave = async () => {
         if (error) throw error;
         await logAction('EDITAR_PROD', `Producto: ${formData.name}`, 'Inventario');
       } else {
-        // MODO CREACIÓN
         const { error } = await supabase
           .from('products')
           .insert([formData]);
@@ -109,29 +99,33 @@ const handleSave = async () => {
         await logAction('CREAR_PROD', `Nuevo: ${formData.name}`, 'Inventario');
       }
 
-      // Éxito
+      // Recargamos lista local
       fetchProducts();
       setIsModalOpen(false);
+      
+      // 👇 2. AVISAMOS A LA APP PRINCIPAL QUE RECARGUE EL POS
+      if (onProductUpdate) onProductUpdate();
 
     } catch (error: any) {
-      // 2. MANEJO DE ERRORES INTELIGENTE 🧠
       if (error instanceof z.ZodError) {
-        // Si fue Zod quien lo detuvo (ej: precio negativo), mostramos SU mensaje
         alert("⚠️ Validación: " + error.issues[0].message);
       } else {
-        // Si fue la base de datos u otro error
         console.error("Error guardando:", error);
         alert("Error guardando producto: " + error.message);
       }
     }
   };
 
-  // --- SOFT DELETE IMPLEMENTADO ---
+  // --- SOFT DELETE CORREGIDO ---
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`¿Eliminar "${name}"?`)) return;
 
+    // 👇 3. ACTUALIZACIÓN OPTIMISTA (VISUAL INSTANTÁNEA)
+    // Borramos el item de la lista visualmente ANTES de que termine la base de datos.
+    // Esto hace que se sienta super rápido y arregla el "no se borra".
+    setProducts(current => current.filter(p => p.id !== id));
+
     try {
-      // CAMBIO CRÍTICO: Usamos update en lugar de delete
       const { error } = await supabase
         .from('products')
         .update({ deleted_at: new Date().toISOString() })
@@ -141,11 +135,13 @@ const handleSave = async () => {
       
       await logAction('BORRAR_PROD', `Eliminado (Soft): ${name}`, 'Inventario');
       
-      // Mantenemos la lógica visual original: Recargar la lista
-      // (RLS se encargará de filtrar el ítem borrado)
-      fetchProducts();
+      // 👇 4. AVISAMOS A LA APP PRINCIPAL
+      if (onProductUpdate) onProductUpdate();
+
     } catch (error: any) {
       alert("Error eliminando: " + error.message);
+      // Si falló, volvemos a cargar la lista real para deshacer el cambio visual
+      fetchProducts(); 
     }
   };
 
@@ -268,7 +264,6 @@ const handleSave = async () => {
                                 value={formData.category}
                                 onChange={e => setFormData({...formData, category: e.target.value})}
                             >
-                                {/* SE ACTUALIZAN AUTOMÁTICAMENTE DESDE LA CONSTANTE CATEGORIES */}
                                 {CATEGORIES.map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
