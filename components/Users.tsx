@@ -78,27 +78,37 @@ export default function Users() {
             return;
         }
 
-        // 2. HARD CHECK: SUPER ADMIN (SaaS Manager)
-        if (email === 'diazmartinnicolas@gmail.com' || user.user_metadata?.role === 'super_admin') {
+        // 2. OBTENER PERFIL REAL (Para evitar vulnerabilidades de user_metadata)
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (!profile) {
+            console.error("No se encontró el perfil del usuario.");
+            setLoading(false);
+            return;
+        }
+
+        setCurrentUserProfile(profile);
+
+        // 3. CHECK SUPER ADMIN (Desde DB)
+        if (profile.role === 'super_admin') {
             console.log("Modo: Super Admin (Companies)");
             setViewMode('companies');
             setFormData(prev => ({ ...prev, typeOrRole: 'pizzeria' }));
-            // Mock de perfil para evitar errores
-            setCurrentUserProfile({ role: 'super_admin' });
             await fetchCompanies();
             setLoading(false);
             return;
         }
 
-        // 3. MODO ADMIN DE NEGOCIO (Staff Manager)
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-
-        setCurrentUserProfile(profile);
+        // 4. MODO ADMIN DE NEGOCIO (Staff Manager)
         console.log("Modo: Business Admin (Real Staff)");
         setViewMode('staff');
         setFormData(prev => ({ ...prev, typeOrRole: 'cashier' }));
 
-        if (profile?.company_id) {
+        if (profile.company_id) {
             await fetchRealStaff(profile.company_id);
         } else {
             console.warn("Usuario sin company_id asignado.");
