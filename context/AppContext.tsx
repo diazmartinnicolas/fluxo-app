@@ -1,212 +1,163 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Product, Order, AuditLog, UserRole, OrderStatus, Customer, Promotion } from '../types';
-
-// Initial Data
-const INITIAL_ADMIN: User = {
-  id: 'admin-1',
-  username: 'admin',
-  password: '123',
-  role: UserRole.ADMIN,
-  name: 'Administrador'
-};
-
-// Prices updated to Argentine Pesos (approximate)
-const INITIAL_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Pizza Muzza', description: 'Salsa de tomate, mucha mozzarella y orégano.', price: 12500, category: 'pizza', active: true },
-  { id: 'p2', name: 'Pizza Calabresa', description: 'Mozzarella y rodajas de longaniza calabresa.', price: 14800, category: 'pizza', active: true },
-  { id: 'p3', name: 'Coca Cola 1.5L', description: 'Refresco de cola botella grande.', price: 3500, category: 'drink', active: true },
-  { id: 'p4', name: 'Empanada Carne', description: 'Empanada clásica de carne cortada a cuchillo.', price: 1200, category: 'side', active: true },
-];
+import { supabase } from '../services/supabase';
+import { logAction } from '../services/audit';
+import { Product, Order, Customer, Promotion, Profile } from '../types';
 
 interface AppContextType {
-  currentUser: User | null;
-  users: User[];
+  session: any;
+  userProfile: Profile | null;
+  loading: boolean;
   products: Product[];
   orders: Order[];
   customers: Customer[];
   promotions: Promotion[];
-  logs: AuditLog[];
-  login: (u: string, p: string) => boolean;
-  logout: () => void;
-  addProduct: (p: Product) => void;
-  updateProduct: (p: Product) => void;
-  deleteProduct: (id: string) => void;
-  addOrder: (o: Order) => void;
-  updateOrderStatus: (id: string, status: OrderStatus) => void;
-  addUser: (u: User) => void;
-  updateUser: (u: User) => void;
-  deleteUser: (id: string) => void;
-  addCustomer: (c: Customer) => void;
-  updateCustomer: (c: Customer) => void;
-  addPromotion: (p: Promotion) => void;
-  deletePromotion: (id: string) => void;
-  togglePromotion: (id: string) => void;
+  refreshData: () => Promise<void>;
+  signOut: () => Promise<void>;
+  createOrder: (orderData: any, items: any[]) => Promise<any>;
+  createCustomer: (customerData: any) => Promise<any>;
+  toggleFavorite: (productId: string, currentStatus: boolean) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Load from LocalStorage or use defaults
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('currentUser');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [session, setSession] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('users');
-    return saved ? JSON.parse(saved) : [INITIAL_ADMIN];
-  });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
 
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
-
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('orders');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    const saved = localStorage.getItem('customers');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [promotions, setPromotions] = useState<Promotion[]>(() => {
-    const saved = localStorage.getItem('promotions');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [logs, setLogs] = useState<AuditLog[]>(() => {
-    const saved = localStorage.getItem('logs');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // Persistence Effects
-  useEffect(() => localStorage.setItem('users', JSON.stringify(users)), [users]);
-  useEffect(() => localStorage.setItem('products', JSON.stringify(products)), [products]);
-  useEffect(() => localStorage.setItem('orders', JSON.stringify(orders)), [orders]);
-  useEffect(() => localStorage.setItem('customers', JSON.stringify(customers)), [customers]);
-  useEffect(() => localStorage.setItem('promotions', JSON.stringify(promotions)), [promotions]);
-  useEffect(() => localStorage.setItem('logs', JSON.stringify(logs)), [logs]);
   useEffect(() => {
-    if (currentUser) localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    else localStorage.removeItem('currentUser');
-  }, [currentUser]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id);
+      else setLoading(false);
+    });
 
-  // Logging Helper
-  const addLog = (action: string, details: string) => {
-    if (!currentUser) return;
-    const newLog: AuditLog = {
-      id: Date.now().toString(),
-      action,
-      details,
-      userId: currentUser.id,
-      userName: currentUser.name,
-      timestamp: Date.now()
-    };
-    setLogs(prev => [newLog, ...prev]);
-  };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id);
+      else {
+        setUserProfile(null);
+        setProducts([]);
+        setOrders([]);
+        setCustomers([]);
+        setPromotions([]);
+        setLoading(false);
+      }
+    });
 
-  // Actions
-  const login = (u: string, p: string) => {
-    const found = users.find(user => user.username === u && user.password === p);
-    if (found) {
-      setCurrentUser(found);
-      const loginLog: AuditLog = {
-        id: Date.now().toString(),
-        action: 'LOGIN',
-        details: 'Usuario ingresó al sistema',
-        userId: found.id,
-        userName: found.name,
-        timestamp: Date.now()
-      };
-      setLogs(prev => [loginLog, ...prev]);
-      return true;
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`*, companies(*)`)
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      setUserProfile(data);
+      if (data) await refreshData();
+    } catch (err) {
+      console.error("Error al cargar perfil:", err);
+    } finally {
+      setLoading(false);
     }
-    return false;
   };
 
-  const logout = () => {
-    addLog('LOGOUT', 'Usuario salió del sistema');
-    setCurrentUser(null);
+  const refreshData = async () => {
+    try {
+      const [prodRes, promoRes, clientRes, orderRes] = await Promise.all([
+        supabase.from('products').select('*').order('name'),
+        supabase.from('promotions').select('*').is('deleted_at', null),
+        supabase.from('clients').select('*').eq('is_active', true).order('name'),
+        supabase.from('orders').select('*, clients(name)').order('created_at', { ascending: false }).limit(50)
+      ]);
+
+      if (prodRes.data) setProducts(prodRes.data);
+      if (promoRes.data) setPromotions(promoRes.data);
+      if (clientRes.data) setCustomers(clientRes.data);
+      if (orderRes.data) setOrders(orderRes.data);
+    } catch (err) {
+      console.error("Error al refrescar datos:", err);
+    }
   };
 
-  const addProduct = (p: Product) => {
-    setProducts(prev => [...prev, p]);
-    addLog('PRODUCT_ADD', `Agregó producto: ${p.name}`);
+  const createOrder = async (orderData: any, items: any[]) => {
+    const { data: order, error: orderErr } = await supabase
+      .from('orders')
+      .insert([orderData])
+      .select()
+      .single();
+
+    if (orderErr) throw orderErr;
+
+    const orderItems = items.map(item => ({
+      ...item,
+      order_id: order.id
+    }));
+
+    const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
+    if (itemsErr) throw itemsErr;
+
+    await logAction('VENTA', `Ticket #${order.ticket_number} - $${order.total}`, 'Caja');
+    await refreshData();
+    return order;
   };
 
-  const updateProduct = (p: Product) => {
-    setProducts(prev => prev.map(prod => prod.id === p.id ? p : prod));
-    addLog('PRODUCT_UPDATE', `Actualizó producto: ${p.name}`);
+  const createCustomer = async (customerData: any) => {
+    const { data, error } = await supabase
+      .from('clients')
+      .insert([customerData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    await logAction('CREAR_CLIENTE', `Rápido: ${data.name}`, 'Clientes');
+    await refreshData();
+    return data;
   };
 
-  const deleteProduct = (id: string) => {
-    const prod = products.find(p => p.id === id);
-    setProducts(prev => prev.filter(p => p.id !== id));
-    addLog('PRODUCT_DELETE', `Eliminó producto: ${prod?.name || id}`);
+  const toggleFavorite = async (productId: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus;
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, is_favorite: newStatus } : p));
+
+    const { error } = await supabase
+      .from('products')
+      .update({ is_favorite: newStatus })
+      .eq('id', productId);
+
+    if (error) {
+      setProducts(prev => prev.map(p => p.id === productId ? { ...p, is_favorite: currentStatus } : p));
+      throw error;
+    }
   };
 
-  const addOrder = (o: Order) => {
-    setOrders(prev => [o, ...prev]);
-    addLog('ORDER_CREATE', `Nueva orden #${o.id.slice(-4)} por $${o.total}`);
-  };
-
-  const updateOrderStatus = (id: string, status: OrderStatus) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-    addLog('ORDER_UPDATE', `Orden #${id.slice(-4)} estado: ${status}`);
-  };
-
-  const addUser = (u: User) => {
-    setUsers(prev => [...prev, u]);
-    addLog('USER_ADD', `Creó usuario: ${u.username}`);
-  };
-
-  const updateUser = (u: User) => {
-    setUsers(prev => prev.map(user => user.id === u.id ? u : user));
-    addLog('USER_UPDATE', `Actualizó usuario: ${u.username}`);
-  };
-
-  const deleteUser = (id: string) => {
-    const user = users.find(u => u.id === id);
-    setUsers(prev => prev.filter(u => u.id !== id));
-    addLog('USER_DELETE', `Eliminó usuario: ${user?.username}`);
-  };
-
-  const addCustomer = (c: Customer) => {
-    setCustomers(prev => [...prev, c]);
-    addLog('CUSTOMER_ADD', `Registró cliente: ${c.firstName} ${c.lastName}`);
-  };
-
-  const updateCustomer = (c: Customer) => {
-    setCustomers(prev => prev.map(cust => cust.id === c.id ? c : cust));
-    addLog('CUSTOMER_UPDATE', `Actualizó cliente: ${c.firstName}`);
-  };
-
-  const addPromotion = (p: Promotion) => {
-    setPromotions(prev => [...prev, p]);
-    addLog('PROMO_ADD', `Creó promoción: ${p.name}`);
-  };
-
-  const deletePromotion = (id: string) => {
-    setPromotions(prev => prev.filter(p => p.id !== id));
-    addLog('PROMO_DELETE', `Eliminó promoción ID: ${id}`);
-  };
-
-  const togglePromotion = (id: string) => {
-    setPromotions(prev => prev.map(p => p.id === id ? { ...p, active: !p.active } : p));
+  const signOut = async () => {
+    await logAction('LOGOUT', 'Sesión cerrada', 'Sistema');
+    await supabase.auth.signOut();
   };
 
   return (
     <AppContext.Provider value={{
-      currentUser, users, products, orders, customers, promotions, logs,
-      login, logout,
-      addProduct, updateProduct, deleteProduct,
-      addOrder, updateOrderStatus,
-      addUser, updateUser, deleteUser,
-      addCustomer, updateCustomer,
-      addPromotion, deletePromotion, togglePromotion
+      session,
+      userProfile,
+      loading,
+      products,
+      orders,
+      customers,
+      promotions,
+      refreshData,
+      signOut,
+      createOrder,
+      createCustomer,
+      toggleFavorite
     }}>
       {children}
     </AppContext.Provider>

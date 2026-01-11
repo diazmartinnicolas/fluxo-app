@@ -1,82 +1,84 @@
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  STAFF = 'STAFF'
-}
-
 export interface User {
   id: string;
-  username: string;
-  password: string; // In a real app, this would be hashed
-  role: UserRole;
+  email: string;
+  role: string;
+  full_name?: string;
+  company_id?: string;
+}
+
+export interface Profile {
+  id: string;
+  email: string;
+  role: string;
+  full_name?: string;
+  name?: string;
+  company_id?: string;
+  companies?: Company;
+}
+
+export interface Company {
+  id: string;
   name: string;
+  status: 'active' | 'inactive';
 }
 
 export interface Product {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   price: number;
-  category: 'pizza' | 'drink' | 'side' | 'dessert';
-  image?: string;
+  category: string;
   active: boolean;
+  is_favorite?: boolean;
+  stock?: number;
+  company_id?: string;
 }
 
 export interface Customer {
   id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  address: string;
-  createdAt: number;
+  name: string;
+  phone?: string;
+  address?: string;
+  is_active: boolean;
+  company_id?: string;
 }
 
 export interface Promotion {
   id: string;
   name: string;
-  type: 'SIMPLE' | 'COMBO'; // SIMPLE = Discount on 1 product, COMBO = Buy A + B get discount
-  targetProductIds: string[]; // For SIMPLE: [prodId], For COMBO: [prodId1, prodId2]
-  discountType: 'PERCENTAGE' | 'FIXED';
-  discountValue: number;
-  active: boolean;
+  type: string;
+  discount_percentage: number;
+  product_1_id: string;
+  product_2_id?: string;
+  is_active: boolean;
 }
 
 export interface OrderItem {
-  productId: string;
-  productName: string;
+  id: string;
+  order_id: string;
+  product_id: string;
   quantity: number;
-  price: number;
-  notes?: string;
+  price_at_moment: number;
 }
 
 export enum OrderStatus {
-  PENDING = 'PENDING',
-  PREPARING = 'PREPARING',
-  READY = 'READY',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED'
+  PENDIENTE = 'pendiente',
+  PREPARANDO = 'preparando',
+  LISTO = 'listo',
+  ENTREGADO = 'entregado',
+  CANCELADO = 'cancelado'
 }
 
 export interface Order {
   id: string;
-  items: OrderItem[];
-  subtotal: number;
-  discount: number;
+  ticket_number: number;
   total: number;
-  status: OrderStatus;
-  createdBy: string; // User ID
-  createdByName: string;
-  createdAt: number; // Timestamp
-  customerId?: string;
-  customerName?: string;
+  status: string;
+  payment_type: string;
+  client_id: string;
+  user_id: string;
+  company_id: string;
+  created_at: string;
+  clients?: { name: string };
+  order_items?: any[];
 }
-
-export interface AuditLog {
-  id: string;
-  action: string;
-  details: string;
-  userId: string;
-  userName: string;
-  timestamp: number;
-}
-
-export type ViewState = 'POS' | 'KITCHEN' | 'INVENTORY' | 'CUSTOMERS' | 'PROMOTIONS' | 'HISTORY' | 'USERS' | 'LOGIN';

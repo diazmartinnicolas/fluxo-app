@@ -3,6 +3,8 @@ import { supabase } from '../services/supabase';
 import { Flame, ChefHat, ArrowRight, Lock } from 'lucide-react';
 // 👇 IMPORTANTE: Importamos la lógica nueva de Demo
 import { resetDemoData } from '../services/demo';
+import { LoginSchema } from '../schemas/auth';
+import { z } from 'zod';
 
 export const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -14,6 +16,14 @@ export const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    const validation = LoginSchema.safeParse({ email, password });
+    if (!validation.success) {
+      setError(validation.error.issues[0].message);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -39,21 +49,21 @@ export const Login = () => {
         email: demoEmail,
         password: demoPass,
       });
-      
+
       if (authError) throw authError;
 
       // 2. EJECUTAR RESET LOCAL (CORRECCIÓN 🛠️)
       // En lugar de supabase.rpc, usamos tu nuevo archivo local
       if (data.user) {
-          console.log("🔄 Iniciando reseteo LOCAL de Demo...");
-          await resetDemoData(data.user.id);
+        console.log("🔄 Iniciando reseteo LOCAL de Demo...");
+        await resetDemoData(data.user.id);
       }
 
       console.log("¡Reseteo completado con éxito!");
-      
+
       // 3. Recargar para ver los datos frescos
-      window.location.reload(); 
-      
+      window.location.reload();
+
     } catch (error: any) {
       console.error("Error en login demo:", error);
       setError("Error al ingresar con la demo: " + error.message);
@@ -64,7 +74,7 @@ export const Login = () => {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-gray-700">
-        
+
         {/* Header con Rebranding */}
         <div className="bg-orange-600 p-8 text-center">
           <div className="flex justify-center mb-4">
@@ -79,7 +89,7 @@ export const Login = () => {
         {/* Body */}
         <div className="p-8">
           <form onSubmit={handleLogin} className="space-y-6">
-            
+
             {error && (
               <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded text-sm text-center">
                 {error}
@@ -139,9 +149,9 @@ export const Login = () => {
             disabled={loading}
             className="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 px-4 rounded-lg focus:outline-none transition duration-300 flex items-center justify-center gap-2"
           >
-             <ChefHat className="w-5 h-5 text-orange-600" />
-             Acceso Demo (Invitado)
-             <ArrowRight className="w-4 h-4 ml-auto text-gray-400" />
+            <ChefHat className="w-5 h-5 text-orange-600" />
+            Acceso Demo (Invitado)
+            <ArrowRight className="w-4 h-4 ml-auto text-gray-400" />
           </button>
         </div>
       </div>
