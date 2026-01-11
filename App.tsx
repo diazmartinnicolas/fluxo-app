@@ -13,6 +13,7 @@ import Reports from './components/Reports';
 import { calculateHalfHalfPrice } from './utils/pricing';
 import { Toaster, toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { StatusOverlay } from './components/ui/StatusOverlay';
 
 // Iconos
 import {
@@ -72,7 +73,7 @@ function App() {
 
   // Derivados de permisos
   const isDemo = session?.user?.email?.toLowerCase().includes('demo');
-  const isSuperAdmin = userProfile?.role === 'super_admin';
+  const isSuperAdmin = userProfile?.role === 'super_admin' || session?.user?.email === 'diazmartinnicolas@gmail.com';
   const isAdmin = userProfile?.role === 'admin' || isSuperAdmin || isDemo;
   const companyName = userProfile?.companies?.name || (isDemo ? 'Modo Demo' : 'Fluxo');
 
@@ -237,6 +238,14 @@ function App() {
 
   const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()));
 
+  // Bloqueo por Suspensión de Servicio (SaaS Control)
+  const isCompanyInactive = userProfile?.companies?.status === 'inactive';
+  const shouldBlockAccess = isCompanyInactive && !isSuperAdmin;
+
+  if (shouldBlockAccess) {
+    return <StatusOverlay companyName={companyName} onSignOut={signOut} />;
+  }
+
   return (
     <div className="flex h-dvh bg-gray-50 font-sans text-gray-800 overflow-hidden">
       <Toaster position="top-right" richColors />
@@ -261,7 +270,12 @@ function App() {
             {isAdmin && (
               <>
                 <div className="h-px bg-gray-100 my-4"></div>
-                <SidebarItem icon={isSuperAdmin ? <Building2 size={20} /> : <UserCog size={20} />} label={isSuperAdmin ? "Usuarios" : "Personal"} active={activeTab === (isSuperAdmin ? 'clients' : 'users')} onClick={() => setActiveTab(isSuperAdmin ? 'clients' : 'users')} />
+                <SidebarItem
+                  icon={isSuperAdmin ? <Building2 size={20} /> : <UserCog size={20} />}
+                  label={isSuperAdmin ? "Panel Negocios" : "Personal"}
+                  active={activeTab === (isSuperAdmin ? 'clients' : 'users')}
+                  onClick={() => setActiveTab(isSuperAdmin ? 'clients' : 'users')}
+                />
                 <SidebarItem icon={<Package size={20} />} label="Inventario" active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} />
                 <SidebarItem icon={<HistoryIcon size={20} />} label="Historial" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
                 <SidebarItem icon={<BarChart3 size={20} />} label="Reportes" active={activeTab === 'reports'} onClick={() => setActiveTab('reports')} />

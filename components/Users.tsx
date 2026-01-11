@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase';
 import {
     Building2, Pizza, Beer, UtensilsCrossed, Coffee, ShieldCheck,
     Plus, Search, Trash2, Pencil, X,
-    UserCog, AlertTriangle, ChefHat, CreditCard, User, Mail, Briefcase, Lock
+    UserCog, AlertTriangle, ChefHat, CreditCard, User, Mail, Briefcase, Lock, Flame
 } from 'lucide-react';
 import { UserSchema, UserEditSchema } from '../schemas/users';
 import { z } from 'zod';
@@ -93,8 +93,10 @@ export default function Users() {
 
         setCurrentUserProfile(profile);
 
-        // 3. CHECK SUPER ADMIN (Desde DB)
-        if (profile.role === 'super_admin') {
+        // 3. CHECK SUPER ADMIN (Desde DB + Fallback Email)
+        const isSuperAdminFallback = profile.role === 'super_admin' || email === 'diazmartinnicolas@gmail.com';
+
+        if (isSuperAdminFallback) {
             console.log("Modo: Super Admin (Companies)");
             setViewMode('companies');
             setFormData(prev => ({ ...prev, typeOrRole: 'pizzeria' }));
@@ -360,6 +362,11 @@ export default function Users() {
             case 'cerveceria': return { icon: <Beer size={20} className="text-yellow-600" />, bg: 'bg-yellow-100', label: 'Cervecería' };
             case 'restaurante': return { icon: <UtensilsCrossed size={20} className="text-blue-600" />, bg: 'bg-blue-100', label: 'Restaurante' };
             case 'cafeteria': return { icon: <Coffee size={20} className="text-amber-800" />, bg: 'bg-amber-100', label: 'Cafetería' };
+            case 'bar': return { icon: <Beer size={20} className="text-red-600" />, bg: 'bg-red-100', label: 'Bar' };
+            case 'heladeria': return { icon: <Flame size={20} className="text-blue-400" />, bg: 'bg-blue-50', label: 'Heladería' };
+            case 'rotiseria': return { icon: <UtensilsCrossed size={20} className="text-green-700" />, bg: 'bg-green-100', label: 'Rotisería' };
+            case 'sushi': return { icon: <Flame size={20} className="text-red-400" />, bg: 'bg-red-50', label: 'Sushi' };
+            case 'parrilla': return { icon: <Flame size={20} className="text-orange-800" />, bg: 'bg-orange-100', label: 'Parrilla' };
             default: return { icon: <Building2 size={20} className="text-gray-500" />, bg: 'bg-gray-100', label: t || 'Empresa' };
         }
     };
@@ -388,10 +395,10 @@ export default function Users() {
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                         {viewMode === 'companies' ? <ShieldCheck className="text-purple-600" /> : <UserCog className="text-blue-600" />}
-                        {viewMode === 'companies' ? 'Usuarios / Negocios' : 'Personal del Negocio'}
+                        {viewMode === 'companies' ? 'Panel de Control Negocios' : 'Personal del Negocio'}
                     </h2>
                     <p className="text-sm text-gray-500">
-                        {viewMode === 'companies' ? 'Administración global de empresas SaaS.' : 'Gestión de empleados y roles.'}
+                        {viewMode === 'companies' ? 'Control de suscripciones, rubros y accesos globales.' : 'Gestión de empleados y roles.'}
                     </p>
                 </div>
                 <button onClick={() => setShowCreateModal(true)} className={`${viewMode === 'companies' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-md transition-all`}>
@@ -486,6 +493,11 @@ export default function Users() {
                                         <option value="cerveceria">🍺 Cervecería</option>
                                         <option value="restaurante">🍽️ Restaurante</option>
                                         <option value="cafeteria">☕ Cafetería</option>
+                                        <option value="bar">🍷 Bar / Tragos</option>
+                                        <option value="heladeria">🍦 Heladería</option>
+                                        <option value="rotiseria">🍗 Rotisería</option>
+                                        <option value="sushi">🥢 Sushi</option>
+                                        <option value="parrilla">🥩 Parrilla</option>
                                     </>
                                 ) : (
                                     <>
@@ -532,6 +544,11 @@ export default function Users() {
                                             <option value="cerveceria">Cervecería</option>
                                             <option value="restaurante">Restaurante</option>
                                             <option value="cafeteria">Cafetería</option>
+                                            <option value="bar">Bar</option>
+                                            <option value="heladeria">Heladería</option>
+                                            <option value="rotiseria">Rotisería</option>
+                                            <option value="sushi">Sushi</option>
+                                            <option value="parrilla">Parrilla</option>
                                         </>
                                     ) : (
                                         <>
