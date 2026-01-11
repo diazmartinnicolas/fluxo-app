@@ -26,14 +26,14 @@ const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: str
 
   return (
     <div ref={ref} className="hidden print:block p-4 bg-white text-black font-mono text-sm w-[80mm] mx-auto leading-tight">
-      
+
       {/* 1. HEADER */}
       <div className="text-center mb-4 border-b border-black pb-2 border-dashed">
         <h2 className="font-black text-2xl uppercase leading-none mb-2">
-            {companyName || 'FLUXO KITCHEN'}
+          {companyName || 'FLUXO KITCHEN'}
         </h2>
         <p className="text-[10px]">
-            {new Date().toLocaleDateString()} - {new Date().toLocaleTimeString()}
+          {new Date().toLocaleDateString()} - {new Date().toLocaleTimeString()}
         </p>
       </div>
 
@@ -45,47 +45,47 @@ const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: str
         </div>
 
         <div className="text-right mb-3">
-             <span className="text-sm font-black border-2 border-black px-2 py-0.5 rounded-sm uppercase">
-                PAGO: {paymentMethod}
-             </span>
+          <span className="text-sm font-black border-2 border-black px-2 py-0.5 rounded-sm uppercase">
+            PAGO: {paymentMethod}
+          </span>
         </div>
-        
+
         <div className="text-sm font-bold uppercase space-y-2">
-            <div>
-                <span className="text-xs font-normal block mb-0.5">Cliente / Dirección:</span>
-                
-                {/* Nombre del Cliente */}
-                <span className="text-base block">{order.client?.name || 'Mostrador'}</span>
-                
-                {/* --- NUEVO: DIRECCIÓN AGREGADA --- */}
-                <span className="text-sm block font-medium mt-0.5">
-                    {order.client?.address || 'Retira en local / Sin dirección'}
-                </span>
-            </div>
-            
-            <div>
-                <span className="text-xs font-normal block mb-0.5">Teléfono:</span>
-                <span>{order.client?.phone || 'Sin teléfono'}</span>
-            </div>
+          <div>
+            <span className="text-xs font-normal block mb-0.5">Cliente / Dirección:</span>
+
+            {/* Nombre del Cliente */}
+            <span className="text-base block">{order.client?.name || 'Mostrador'}</span>
+
+            {/* --- NUEVO: DIRECCIÓN AGREGADA --- */}
+            <span className="text-sm block font-medium mt-0.5">
+              {order.client?.address || 'Retira en local / Sin dirección'}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-xs font-normal block mb-0.5">Teléfono:</span>
+            <span>{order.client?.phone || 'Sin teléfono'}</span>
+          </div>
         </div>
 
         <p className="text-[10px] mt-2 text-right">
-            Ingreso: {new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+          Ingreso: {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
 
       {/* ITEMS (ORDENADOS) */}
       <div className="border-b border-black border-dashed py-2 mb-4">
         <ul className="space-y-3">
-            {sortedItems.map((item: any, index: number) => (
-                <li key={index} className="flex gap-2 items-start">
-                    <span className="font-black text-lg w-6 text-right leading-none">{item.quantity}</span>
-                    <span className="mx-1 pt-1">x</span>
-                    <span className="flex-1 text-lg font-bold uppercase leading-none pt-0.5">
-                        {item.product?.name || 'Item'}
-                    </span>
-                </li>
-            ))}
+          {sortedItems.map((item: any, index: number) => (
+            <li key={index} className="flex gap-2 items-start">
+              <span className="font-black text-lg w-6 text-right leading-none">{item.quantity}</span>
+              <span className="mx-1 pt-1">x</span>
+              <span className="flex-1 text-lg font-bold uppercase leading-none pt-0.5">
+                {item.product?.name || 'Item'}
+              </span>
+            </li>
+          ))}
         </ul>
       </div>
 
@@ -104,7 +104,7 @@ const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: str
 });
 
 interface KitchenProps {
-  demoOrders?: any[]; 
+  demoOrders?: any[];
   onDemoComplete?: (id: any) => void;
   companyName?: string;
 }
@@ -112,14 +112,14 @@ interface KitchenProps {
 export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }: KitchenProps) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // --- ESTADO PARA IMPRESIÓN ---
   const [printingOrder, setPrintingOrder] = useState<any>(null);
   const componentRef = useRef<HTMLDivElement>(null);
 
   // Hook de impresión
   const handlePrint = useReactToPrint({
-    contentRef: componentRef, 
+    contentRef: componentRef,
     documentTitle: printingOrder ? `Comanda-${printingOrder.ticket_number}` : 'Comanda',
   });
 
@@ -127,7 +127,7 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
   const fetchOrders = async () => {
     setLoading(true);
     try {
-        const { data: realOrders, error } = await supabase
+      const { data: realOrders, error } = await supabase
         .from('orders')
         .select(`
             *,
@@ -140,13 +140,13 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
         .eq('status', 'pendiente')
         .order('created_at', { ascending: true });
 
-        if (error) throw error;
-        if (realOrders) setOrders(realOrders);
-        
+      if (error) throw error;
+      if (realOrders) setOrders(realOrders);
+
     } catch (error) {
-        console.error("Error cargando pedidos reales:", error);
+      console.error("Error cargando pedidos reales:", error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -159,8 +159,8 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
   // --- HANDLERS ---
   const handleCompleteOrder = async (orderId: string | number) => {
     if (onDemoComplete && demoOrders.some(o => o.id === orderId)) {
-        onDemoComplete(orderId);
-        return;
+      onDemoComplete(orderId);
+      return;
     }
     const { error } = await supabase
       .from('orders')
@@ -175,8 +175,8 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
     if (!confirm("¿Seguro que deseas CANCELAR este pedido?")) return;
 
     if (onDemoComplete && demoOrders.some(o => o.id === orderId)) {
-        onDemoComplete(orderId); 
-        return;
+      onDemoComplete(orderId);
+      return;
     }
     const { error } = await supabase
       .from('orders')
@@ -191,12 +191,12 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
   const onPrintClick = (order: any) => {
     setPrintingOrder(order);
     setTimeout(() => {
-        handlePrint();
+      handlePrint();
     }, 100);
   };
 
   // --- MERGE DE DATOS ---
-  const allOrders = [...demoOrders, ...orders].sort((a, b) => 
+  const allOrders = [...demoOrders, ...orders].sort((a, b) =>
     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
@@ -204,7 +204,7 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 min-h-screen relative">
-      
+
       {/* COMPONENTE OCULTO PARA IMPRESIÓN */}
       <div className="hidden">
         <KitchenTicket ref={componentRef} order={printingOrder} companyName={companyName} />
@@ -214,8 +214,8 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
           <ChefHat size={32} className="text-orange-500" /> Comandas de Cocina
         </h2>
-        <button 
-          onClick={fetchOrders} 
+        <button
+          onClick={fetchOrders}
           className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors shadow-sm"
           title="Actualizar"
         >
@@ -225,7 +225,7 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
 
       {allOrders.length === 0 ? (
         <div className="text-center text-gray-400 mt-20 flex flex-col items-center">
-          <CheckCircle size={64} className="mb-4 opacity-20"/>
+          <CheckCircle size={64} className="mb-4 opacity-20" />
           <p className="text-xl font-medium">Todo limpio, chef.</p>
           <p className="text-sm mt-1">No hay pedidos pendientes en cola.</p>
         </div>
@@ -235,87 +235,87 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
             const isDemo = demoOrders.some(d => d.id === order.id);
 
             return (
-                <div key={order.id} className={`rounded-xl shadow-lg border-l-4 overflow-hidden flex flex-col transition-all animate-in fade-in zoom-in duration-300 ${isDemo ? 'bg-orange-50 border-orange-500' : 'bg-white border-blue-500'}`}>
+              <div key={order.id} className={`rounded-xl shadow-lg border-l-4 overflow-hidden flex flex-col transition-all animate-in fade-in zoom-in duration-300 ${isDemo ? 'bg-orange-50 border-orange-500' : 'bg-white border-blue-500'}`}>
                 {/* Header Ticket (Vista en Pantalla) */}
                 <div className={`p-3 border-b flex justify-between items-start ${isDemo ? 'bg-orange-100 text-orange-900' : 'bg-gray-50 text-gray-800'}`}>
-                    <div>
+                  <div>
                     <h3 className="font-bold text-lg flex items-center gap-2">
-                        #{order.ticket_number} 
-                        {isDemo && <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded uppercase">Demo</span>}
+                      #{order.ticket_number || (typeof order.id === 'string' ? order.id.slice(-4) : order.id)}
+                      {isDemo && <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded uppercase">Demo</span>}
                     </h3>
                     <p className={`text-xs font-medium truncate w-32 md:w-40 ${isDemo ? 'text-orange-800' : 'text-gray-500'}`}>
-                        {order.client?.name || 'Cliente Mostrador'}
+                      {order.client?.name || 'Cliente Mostrador'}
                     </p>
-                    </div>
-                    <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${isDemo ? 'bg-white border-orange-200 text-orange-800' : 'bg-white border-gray-200 text-gray-500'}`}>
+                  </div>
+                  <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${isDemo ? 'bg-white border-orange-200 text-orange-800' : 'bg-white border-gray-200 text-gray-500'}`}>
                     <Clock size={12} />
-                    <span>{new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                    </div>
+                    <span>{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
                 </div>
 
                 {/* Items */}
                 <div className="p-4 flex-1 text-gray-700">
-                    <ul className="space-y-3">
+                  <ul className="space-y-3">
                     {order.order_items?.map((item: any, index: number) => (
-                        <li key={index} className={`flex gap-3 text-sm border-b border-dashed pb-2 last:border-0 last:pb-0 ${isDemo ? 'border-orange-200' : 'border-gray-100'}`}>
+                      <li key={index} className={`flex gap-3 text-sm border-b border-dashed pb-2 last:border-0 last:pb-0 ${isDemo ? 'border-orange-200' : 'border-gray-100'}`}>
                         <span className={`font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs flex-shrink-0 ${isDemo ? 'bg-orange-200 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
-                            {item.quantity}
+                          {item.quantity}
                         </span>
                         <span className="leading-tight pt-0.5">
-                            {item.product?.name || 'Producto desconocido'}
+                          {item.product?.name || 'Producto desconocido'}
                         </span>
-                        </li>
+                      </li>
                     ))}
-                    </ul>
+                  </ul>
                 </div>
 
                 {/* Footer Actions */}
                 <div className={`p-3 border-t flex gap-2 ${isDemo ? 'bg-orange-50 border-orange-100' : 'bg-gray-50 border-gray-100'}`}>
-                    
-                    {/* BOTÓN IMPRIMIR */}
-                    <button 
-                        onClick={() => onPrintClick(order)}
-                        className="p-3 rounded-lg font-bold border transition-colors flex items-center justify-center bg-gray-100 border-gray-200 text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                        title="Imprimir Comanda"
-                    >
-                        <Printer size={20} />
-                    </button>
 
-                    {/* BOTÓN CANCELAR */}
-                    <button 
-                        onClick={() => handleCancelOrder(order.id)}
-                        className="px-3 rounded-lg font-bold border transition-colors flex items-center justify-center bg-red-100 border-red-200 text-red-700 hover:bg-red-200"
-                        title="Cancelar Pedido"
-                    >
-                        <XCircle size={20} />
-                    </button>
+                  {/* BOTÓN IMPRIMIR */}
+                  <button
+                    onClick={() => onPrintClick(order)}
+                    className="p-3 rounded-lg font-bold border transition-colors flex items-center justify-center bg-gray-100 border-gray-200 text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                    title="Imprimir Comanda"
+                  >
+                    <Printer size={20} />
+                  </button>
 
-                    {/* --- NUEVO BOTÓN WHATSAPP --- */}
-                    <WhatsAppButton 
-                        type="DELIVERY"
-                        order={{
-                            id: order.ticket_number,
-                            customerName: order.client?.name || 'Cliente',
-                            phone: order.client?.phone || '',
-                            total: order.total,
-                            paymentMethod: order.payment_type || 'cash',
-                            // Transformamos los items al formato que espera el botón
-                            items: order.order_items.map((item: any) => ({
-                                quantity: item.quantity,
-                                name: item.product?.name || 'Item'
-                            }))
-                        }}
-                    />
+                  {/* BOTÓN CANCELAR */}
+                  <button
+                    onClick={() => handleCancelOrder(order.id)}
+                    className="px-3 rounded-lg font-bold border transition-colors flex items-center justify-center bg-red-100 border-red-200 text-red-700 hover:bg-red-200"
+                    title="Cancelar Pedido"
+                  >
+                    <XCircle size={20} />
+                  </button>
 
-                    {/* BOTÓN LISTO */}
-                    <button 
-                        onClick={() => handleCompleteOrder(order.id)}
-                        className={`flex-1 py-3 rounded-lg font-bold text-white shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${isDemo ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700'}`}
-                    >
-                        <CheckCircle size={18} /> {isDemo ? 'Despachar' : 'Listo'}
-                    </button>
+                  {/* --- NUEVO BOTÓN WHATSAPP --- */}
+                  <WhatsAppButton
+                    type="DELIVERY"
+                    order={{
+                      id: order.ticket_number,
+                      customerName: order.client?.name || 'Cliente',
+                      phone: order.client?.phone || '',
+                      total: order.total,
+                      paymentMethod: order.payment_type || 'cash',
+                      // Transformamos los items al formato que espera el botón
+                      items: order.order_items.map((item: any) => ({
+                        quantity: item.quantity,
+                        name: item.product?.name || 'Item'
+                      }))
+                    }}
+                  />
+
+                  {/* BOTÓN LISTO */}
+                  <button
+                    onClick={() => handleCompleteOrder(order.id)}
+                    className={`flex-1 py-3 rounded-lg font-bold text-white shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${isDemo ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700'}`}
+                  >
+                    <CheckCircle size={18} /> {isDemo ? 'Despachar' : 'Listo'}
+                  </button>
                 </div>
-                </div>
+              </div>
             );
           })}
         </div>

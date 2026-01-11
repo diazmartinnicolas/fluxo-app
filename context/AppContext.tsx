@@ -99,21 +99,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     let nextTicket = 1;
     try {
-      const { data: lastOrder } = await supabase
+      // Usamos count para saber cuántos pedidos van HOY y así resetear a #1, #2... 
+      // incluso si hay números altos previos.
+      const { count, error: seqErr } = await supabase
         .from('orders')
-        .select('ticket_number')
+        .select('*', { count: 'exact', head: true })
         .eq('company_id', companyId)
-        .gte('created_at', `${today}T00:00:00`)
-        .order('ticket_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .gte('created_at', `${today}T00:00:00`);
 
-      if (lastOrder && lastOrder.ticket_number) {
-        nextTicket = lastOrder.ticket_number + 1;
-      }
+      if (seqErr) throw seqErr;
+      nextTicket = (count || 0) + 1;
+
+      console.log(`[Ticket Logic] Empresa: ${companyId}, Hoy: ${today}, Pedidos previos: ${count}, Siguiente: ${nextTicket}`);
     } catch (err) {
       console.error("Error calculando secuencia de ticket:", err);
-      // Fallback a 1 si falla la consulta
+      nextTicket = Math.floor(Date.now() / 1000) % 10000;
     }
 
     // 3. Insertar con el número calculado y asegurando el company_id
