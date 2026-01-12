@@ -157,10 +157,12 @@ export default function Users() {
                 .from('profiles')
                 .select('*')
                 .eq('company_id', companyId)
+                .is('deleted_at', null)
                 .neq('role', 'super_admin')
-                .order('name', { ascending: true }); // RLS debe filtrar deleted_at IS NULL
+                .order('name', { ascending: true });
 
             if (error) throw error;
+
             if (data) setItems(data.map(s => ({
                 ...s,
                 name: s.name || 'Sin Nombre',
@@ -413,7 +415,7 @@ export default function Users() {
             case 'cajero': return { icon: <CreditCard size={20} className="text-green-600" />, bg: 'bg-green-100', label: 'Cajero' };
             case 'cocina': return { icon: <ChefHat size={20} className="text-orange-600" />, bg: 'bg-orange-100', label: 'Cocina' };
             case 'waiter':
-            case 'mozo': return { icon: <User size={20} className="text-blue-600" />, bg: 'bg-blue-100', label: 'Camarero' };
+            case 'mozo': return { icon: <User size={20} className="text-blue-600" />, bg: 'bg-blue-100', label: 'Mozo' };
             default: return { icon: <Briefcase size={20} className="text-gray-500" />, bg: 'bg-gray-100', label: r || 'Empleado' };
         }
     };
@@ -541,7 +543,7 @@ export default function Users() {
                                         <option value="cashier">💰 Cajero</option>
                                         <option value="cocina">👨‍🍳 Cocina</option>
                                         <option value="admin">🛡️ Admin</option>
-                                        <option value="waiter">💁 Mozo</option>
+                                        <option value="mozo">💁 Mozo</option>
                                     </>
                                 )}
                             </select>
@@ -592,7 +594,7 @@ export default function Users() {
                                             <option value="cashier">Cajero</option>
                                             <option value="cocina">Cocina</option>
                                             <option value="admin">Admin</option>
-                                            <option value="waiter">Mozo</option>
+                                            <option value="mozo">Mozo</option>
                                         </>
                                     )}
                                 </select>
