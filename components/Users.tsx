@@ -135,8 +135,8 @@ export default function Users() {
 
             const { data: profData } = await supabase
                 .from('profiles')
-                .select('company_id, email')
-                .eq('role', 'admin')
+                .select('company_id, email, role')
+                .in('role', ['admin', 'super_admin'])
                 .not('company_id', 'is', null);
 
             if (coData) setItems(coData.map(c => ({ ...c, name: c.name || 'Sin Nombre' })));
@@ -233,13 +233,15 @@ export default function Users() {
                 if (coError) throw coError;
 
                 // Trigger SQL se encarga del perfil
+                // If business type is super_admin, assign super_admin role
+                const adminRole = formData.typeOrRole === 'super_admin' ? 'super_admin' : 'admin';
                 const { error: authError } = await tempClient.auth.signUp({
                     email: formData.email,
                     password: formData.password,
                     options: {
                         data: {
                             full_name: `Admin ${formData.name}`,
-                            role: 'admin',
+                            role: adminRole,
                             company_id: company.id
                         }
                     }
@@ -305,6 +307,16 @@ export default function Users() {
                     status: editData.status
                 }).eq('id', editData.id);
                 if (error) throw error;
+
+                // Update admin role based on business_type
+                // If super_admin type, the admin should have super_admin role
+                const newAdminRole = editData.typeOrRole === 'super_admin' ? 'super_admin' : 'admin';
+                const { error: roleError } = await supabase
+                    .from('profiles')
+                    .update({ role: newAdminRole })
+                    .eq('company_id', editData.id)
+                    .in('role', ['admin', 'super_admin']);
+                if (roleError) console.warn('Warning updating role:', roleError);
 
                 // Reasignar Admin
                 if (editData.newEmail.trim() !== '') {
@@ -390,10 +402,10 @@ export default function Users() {
         setShowEditModal(true);
     };
 
-    // --- HELPERS VISUALES ---
     const getBusinessVisuals = (type: string) => {
         const t = (type || '').toLowerCase();
         switch (t) {
+            case 'super_admin': return { icon: <ShieldCheck size={20} className="text-purple-600" />, bg: 'bg-purple-100', label: 'CEO / Super Admin' };
             case 'pizzeria': return { icon: <Pizza size={20} className="text-orange-600" />, bg: 'bg-orange-100', label: 'Pizzería' };
             case 'cerveceria': return { icon: <Beer size={20} className="text-yellow-600" />, bg: 'bg-yellow-100', label: 'Cervecería' };
             case 'restaurante': return { icon: <UtensilsCrossed size={20} className="text-blue-600" />, bg: 'bg-blue-100', label: 'Restaurante' };
@@ -528,6 +540,7 @@ export default function Users() {
                             <select className="w-full p-2 border rounded bg-white" value={formData.typeOrRole} onChange={e => setFormData({ ...formData, typeOrRole: e.target.value })}>
                                 {viewMode === 'companies' ? (
                                     <>
+                                        <option value="super_admin">🛡️ CEO / Super Admin</option>
                                         <option value="pizzeria">🍕 Pizzería</option>
                                         <option value="cerveceria">🍺 Cervecería</option>
                                         <option value="restaurante">🍽️ Restaurante</option>
@@ -579,6 +592,7 @@ export default function Users() {
                                 <select className="w-full p-2 border rounded bg-white" value={editData.typeOrRole} onChange={e => setEditData({ ...editData, typeOrRole: e.target.value })}>
                                     {viewMode === 'companies' ? (
                                         <>
+                                            <option value="super_admin">CEO / Super Admin</option>
                                             <option value="pizzeria">Pizzería</option>
                                             <option value="cerveceria">Cervecería</option>
                                             <option value="restaurante">Restaurante</option>
