@@ -56,6 +56,7 @@ function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [paymentType, setPaymentType] = useState('efectivo');
   const [firstHalf, setFirstHalf] = useState<any>(null);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   // Atajos de teclado
@@ -89,7 +90,7 @@ function App() {
   const isAdmin = userProfile?.role === 'admin' || isSuperAdmin || isDemo;
   const companyName = userProfile?.companies?.name || (isDemo ? 'Modo Demo' : 'Fluxo');
 
-  const categories = ['Todo', 'Promociones', 'Pizzas', 'Milanesas', 'Hamburguesas', 'Empanadas', 'Ensaladas', 'Mitades', 'Bebidas', 'Postres'];
+  const categories = ['Todo', 'Promociones', 'Pizzas', 'Milanesas', 'Hamburguesas', 'Empanadas', 'Ensaladas', 'Mitades', 'Bebidas', 'Postres', 'Otros'];
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -280,6 +281,7 @@ function App() {
   const filteredProducts = products
     .filter(p => p.active) // Solo productos activos
     .filter(p => selectedCategory === 'Todo' || (selectedCategory === 'Mitades' ? (p.category === 'Mitades' || p.name.toLowerCase().includes('mitad')) : p.category === selectedCategory))
+    .filter(p => productSearchTerm === '' || p.name.toLowerCase().includes(productSearchTerm.toLowerCase())) // Búsqueda por nombre
     .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0));
 
   const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()));
@@ -358,9 +360,25 @@ function App() {
             <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${mobileView === 'cart' ? 'hidden md:block' : 'block'}`}>
               <header className="flex gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
                 {categories.map(cat => (
-                  <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-orange-600 text-white shadow-md' : 'bg-white border text-gray-600'}`}>{cat}</button>
+                  <button key={cat} onClick={() => { setSelectedCategory(cat); setProductSearchTerm(''); }} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-orange-600 text-white shadow-md' : 'bg-white border text-gray-600'}`}>{cat}</button>
                 ))}
               </header>
+              {/* Buscador de productos */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Buscar producto..."
+                  className="w-full pl-10 p-3 border border-gray-200 rounded-xl text-sm bg-white shadow-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none transition-all"
+                  value={productSearchTerm}
+                  onChange={e => setProductSearchTerm(e.target.value)}
+                />
+                {productSearchTerm && (
+                  <button onClick={() => setProductSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pb-24">
                 {selectedCategory !== 'Promociones' && filteredProducts.map(product => (
                   <div key={product.id} onClick={() => {

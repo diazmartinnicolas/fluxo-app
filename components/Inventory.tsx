@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Categorías del sistema
 const CATEGORIES = [
   'Pizzas', 'Mitades', 'Milanesas', 'Hamburguesas',
-  'Empanadas', 'Ensaladas', 'Bebidas', 'Postres'
+  'Empanadas', 'Ensaladas', 'Bebidas', 'Postres', 'Otros'
 ];
 
 // 👇 1. Definimos que este componente acepta una función de aviso
