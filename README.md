@@ -20,7 +20,7 @@ Sistema integral para la gestión gastronómica desarrollado con tecnologías mo
 * 📊 **Dashboard:** Métricas de ventas y gestión de inventario.
 
 ## 🔗 Demo en Vivo
-Puedes probar la aplicación aquí:(https://pizzaflow-nu.vercel.app/)
+Puedes probar la aplicación aquí:(https://fluxo-app-nu.vercel.app/)
 
 
 ## 🚀 Módulo de Analytics (Data Engineering & BI)
