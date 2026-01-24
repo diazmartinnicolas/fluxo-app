@@ -1,0 +1,41 @@
+id,name,phone,address,created_at,user_id,company_id,is_active,deleted_at,birth_date
+b9ea281e-ea67-45c5-9496-40dfa67a63f7,Dylan Torres,+54 15 2665 7142,"Av. Viedma N° 909
+San Miguel de Tucumán 4000, Tucumán",2025-10-28 07:28:16,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+217484bd-9c14-4b74-a21b-5fbfda47805b,Dr(a). Santino Ezequiel Vera,+54 15 2473 0127,"Avenida San Salvador de Jujuy N° 2235
+La Rioja 5300, La Rioja",2025-10-08 12:19:16,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+d3c8a045-9ec7-480e-a684-75af166d8d38,Abigail Gimenez,+54 15 2890 4057,"Blv. J.B. Alberdi N° 996
+Bahía Blanca 8000, Buenos Aires",2025-11-21 16:02:06,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+7f1c82a1-d4ba-4b9a-8c90-900b8b6e6099,Julia Ruiz,+54 9 3483 5386,"Av. Omar Nuñez N° 5366
+Viedma 8500, Río Negro",2025-10-24 23:40:00,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+13c6ff52-5b99-42a1-99cb-6aae578cee2a,Dr(a). Tiziano Benjamin Diaz,+54 15 2962 1706,"Diag. Omar Nuñez N° 98 Torre 3 Dto. 5
+Merlo 5881, San Luis",2025-10-21 11:21:20,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+96794c66-805c-4d2b-a736-1c467413d4aa,Santiago Joaquín Carrizo Acuña,+54 9 3323 0698,"Calle Chaco N° 86
+Resistencia 3500, Chaco",2025-10-06 12:13:54,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+5cbd4f90-76c5-449d-a1fd-b0ce6e2857da,Santiago Benjamin Gonzalez,+54 15 2423 0888,"Av. Río Gallegos N° 372 Torre 9 Dto. 4
+Río Gallegos 9400, Santa Cruz",2025-09-28 13:35:43,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+931dee55-eedb-4e5e-805d-4dce391ee16f,Sebastian Catalina Ponce,+54 9 3340 3380,"Diagonal Chaco N° 771 Local 7
+Ushuaia 9410, Tierra del Fuego",2025-09-28 21:37:41,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+58bc47eb-694b-4166-99ee-cd305fe6491f,Augusto Peralta Molina,+54 15 2645 4056,"Blv. 9 N° 151 Dto. 8
+Ushuaia 9410, Tierra del Fuego",2025-11-20 06:49:53,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+aaf3d89e-0f6c-47fb-9191-20572ccd4294,Martina Luna Paz Ledesma,+54 15 2726 3597,"Camino Saavedra N° 983 Dto. 4
+San Juan 5400, San Juan",2025-11-02 06:31:51,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+a92cecb5-a8e4-49fb-8229-bdf2c2eea680,Ignacio Ramos,+54 15 2782 6140,"Diag. Santiago del Estero N° 390
+Río Gallegos 9400, Santa Cruz",2025-11-16 23:39:32,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+d1cabee8-946d-43d0-8b67-4a98ddbcc8bb,Sr(a). Julieta Rodriguez,+54 15 2691 8854,"Diag. Tucumán N° 34 Dto. 2
+Rosario 2000, Santa Fe",2025-10-30 14:42:53,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+b1f2ce45-88f6-4b2d-8624-1ba0a31f3587,Francesca Lucero Rodriguez,+54 9 3846 9575,"Avenida 1 N° 124 Dto. 2
+Constitución 1004, Ciudad Autónoma de Buenos Aires",2025-10-26 19:01:49,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+3f6bd936-b7a9-4210-aa48-9a292388bb72,Alma Valentina Tomàs Garcia Acuña,+54 15 2996 5657,"Calle Corrientes N° 8026
+Viedma 8500, Río Negro",2025-11-06 14:17:37,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+b12d0c0b-498a-4efd-967f-15366c541b19,Thiago Nicolas Olivera,+54 9 3378 8048,"Av. Santiago del Estero N° 627 Dto. 2
+San Juan 5400, San Juan",2025-11-16 19:15:02,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+c5dd2b0f-726b-4702-9fbd-45cb9901d9a9,Thiago Nahuel Perez Aguirre,+54 9 3851 3232,"Av. Córdoba N° 869
+San Juan 5400, San Juan",2025-09-26 22:06:44,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+6db2748f-dfda-4407-bf77-86ffb5b9c80c,Maximo Lopez,+54 9 3511 0974,"Diagonal Catamarca N° 72 Dto. 4
+Bahía Blanca 8000, Buenos Aires",2025-11-06 02:33:00,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+0415bb16-bcdb-4257-a945-281528f6003d,Maria Victoria Campos Roldan,+54 9 3167 9687,"Avenida Córdoba N° 858
+Santa Rosa 6300, La Pampa",2025-10-13 00:46:22,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+dd85751b-001c-4d9e-ade3-d84d69529d23,Salvador Flores Guzman,+54 9 3643 1882,"Av. 2 N° 829
+San Ferando del Valle de Catamarca 4700, Catamarca",2025-10-17 22:05:43,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
+ff15a1c2-c33e-48ad-a933-7800dc8eacf0,Santiago Alfonsina Fernandez,+54 15 2174 5453,"Diagonal Chaco N° 694 Piso 1 Dto. 5
+Mendoza 5500, Mendoza",2025-11-17 17:22:25,,17ea9272-bf9d-406d-bca3-01fc75d08032,True,,
