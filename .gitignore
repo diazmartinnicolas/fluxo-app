@@ -24,6 +24,6 @@ dist-ssr
 *.sw?
 
 # Python Analytics
-components/Analytics/venv/
-components/Analytics/__pycache__/
-components/Analytics/*.csv
+Analytics/venv/
+Analytics/__pycache__/
+Analytics/*.csv
