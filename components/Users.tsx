@@ -29,6 +29,8 @@ export default function Users() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [deletedStaff, setDeletedStaff] = useState<any[]>([]); // Empleados eliminados
+    const [showDeletedModal, setShowDeletedModal] = useState(false);
 
     // DATOS DEL USUARIO ACTUAL
     const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
@@ -153,6 +155,7 @@ export default function Users() {
 
     const fetchRealStaff = async (companyId: string) => {
         try {
+            // Empleados activos
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
@@ -168,8 +171,41 @@ export default function Users() {
                 name: s.name || 'Sin Nombre',
                 email: s.email || 'Sin Email'
             })));
+
+            // También cargar empleados eliminados
+            const { data: deleted } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('company_id', companyId)
+                .not('deleted_at', 'is', null)
+                .neq('role', 'super_admin');
+
+            if (deleted) setDeletedStaff(deleted);
         } catch (error: any) {
             console.error("Error fetching staff:", error);
+        }
+    };
+
+    // Reactivar un empleado eliminado
+    const handleReactivate = async (profile: any) => {
+        if (!confirm(`¿Reactivar al empleado "${profile.name || profile.email}"?`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ deleted_at: null })
+                .eq('id', profile.id);
+
+            if (error) throw error;
+
+            toast.success(`✅ Empleado "${profile.name}" reactivado.`);
+            setShowDeletedModal(false);
+
+            if (currentUserProfile?.company_id) {
+                await fetchRealStaff(currentUserProfile.company_id);
+            }
+        } catch (error: any) {
+            toast.error("Error al reactivar: " + error.message);
         }
     };
 
@@ -255,18 +291,100 @@ export default function Users() {
                 const myCompanyId = currentUserProfile?.company_id;
                 if (!myCompanyId) throw new Error("No tienes una empresa asignada.");
 
-                const { error: authError } = await tempClient.auth.signUp({
+                // VERIFICAR si el email ya existe como perfil eliminado en NUESTRA empresa
+                // Nota: El email puede estar en lowercase o no, buscamos en ambos
+                const { data: existingProfile } = await supabase
+                    .from('profiles')
+                    .select('id, name, email, deleted_at, company_id')
+                    .or(`email.ilike.${formData.email}`)
+                    .maybeSingle();
+
+                if (existingProfile) {
+                    // El perfil existe en la tabla profiles
+                    if (existingProfile.company_id === myCompanyId && existingProfile.deleted_at) {
+                        // Está eliminado en NUESTRA empresa - ofrecemos reactivar
+                        const reactivate = confirm(
+                            `El empleado "${existingProfile.name || formData.email}" fue eliminado anteriormente.\n\n¿Deseas reactivarlo?`
+                        );
+
+                        if (reactivate) {
+                            const { error: reactivateError } = await supabase
+                                .from('profiles')
+                                .update({
+                                    deleted_at: null,
+                                    name: formData.name,
+                                    role: formData.typeOrRole
+                                })
+                                .eq('id', existingProfile.id);
+
+                            if (reactivateError) throw reactivateError;
+
+                            toast.success(`✅ Empleado "${formData.name}" reactivado.`);
+                            await fetchRealStaff(myCompanyId);
+                            setShowCreateModal(false);
+                            setFormData({
+                                name: '',
+                                typeOrRole: 'cashier',
+                                email: '',
+                                password: ''
+                            });
+                            setIsProcessing(false);
+                            return;
+                        } else {
+                            setIsProcessing(false);
+                            return;
+                        }
+                    } else if (existingProfile.company_id === myCompanyId && !existingProfile.deleted_at) {
+                        // Activo en nuestra empresa
+                        throw new Error("Este empleado ya existe y está activo en tu lista de personal.");
+                    } else if (existingProfile.company_id !== myCompanyId) {
+                        // Pertenece a OTRA empresa
+                        throw new Error("Este email ya está registrado en otra empresa.");
+                    }
+                }
+
+                // Si llegamos aquí, intentamos crear el usuario en Auth
+                const { data: signUpData, error: authError } = await tempClient.auth.signUp({
                     email: formData.email,
                     password: formData.password,
                     options: {
                         data: {
-                            full_name: formData.name, // Nombre empleado
-                            role: formData.typeOrRole, // Rol empleado
+                            full_name: formData.name,
+                            role: formData.typeOrRole,
                             company_id: myCompanyId
                         }
                     }
                 });
-                if (authError) throw authError;
+
+                if (authError) {
+                    // El usuario existe en Auth pero no tiene perfil en profiles (o el perfil no tiene email)
+                    if (authError.message.includes('already registered')) {
+                        // Buscar perfil eliminado por company_id (puede que no tenga email en profiles)
+                        const { data: deletedProfiles } = await supabase
+                            .from('profiles')
+                            .select('id, name, deleted_at')
+                            .eq('company_id', myCompanyId)
+                            .not('deleted_at', 'is', null);
+
+                        // Mostrar opción de reactivar si hay perfiles eliminados
+                        if (deletedProfiles && deletedProfiles.length > 0) {
+                            toast.error(
+                                "Este email ya está registrado en el sistema. " +
+                                "Si este empleado fue eliminado previamente, " +
+                                "contacta al soporte para reactivarlo."
+                            );
+                        } else {
+                            toast.error(
+                                "Este email ya está registrado en el sistema. " +
+                                "Puede pertenecer a otra empresa."
+                            );
+                        }
+                        setIsProcessing(false);
+                        return;
+                    }
+                    throw authError;
+                }
+
                 toast.success(`✅ Empleado "${formData.name}" registrado.`);
                 await fetchRealStaff(myCompanyId);
             }
@@ -281,7 +399,7 @@ export default function Users() {
             });
 
         } catch (error: any) {
-            alert("Error: " + error.message);
+            toast.error("Error: " + error.message);
         } finally {
             setIsProcessing(false);
         }
@@ -449,9 +567,19 @@ export default function Users() {
                         {viewMode === 'companies' ? 'Control de suscripciones, rubros y accesos globales.' : 'Gestión de empleados y roles.'}
                     </p>
                 </div>
-                <button onClick={() => setShowCreateModal(true)} className={`${viewMode === 'companies' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-md transition-all`}>
-                    <Plus size={20} /> {viewMode === 'companies' ? 'Nuevo Cliente' : 'Nuevo Empleado'}
-                </button>
+                <div className="flex gap-2">
+                    {viewMode === 'staff' && deletedStaff.length > 0 && (
+                        <button
+                            onClick={() => setShowDeletedModal(true)}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-md transition-all"
+                        >
+                            <Trash2 size={18} /> Eliminados ({deletedStaff.length})
+                        </button>
+                    )}
+                    <button onClick={() => setShowCreateModal(true)} className={`${viewMode === 'companies' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-md transition-all`}>
+                        <Plus size={20} /> {viewMode === 'companies' ? 'Nuevo Cliente' : 'Nuevo Empleado'}
+                    </button>
+                </div>
             </div>
 
             {/* SEARCH */}
@@ -512,7 +640,8 @@ export default function Users() {
 
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end gap-2">
-                                            {isSuperAdminFallback && (
+                                            {/* Botón blanquear: Super Admin siempre, o Admin de negocio en modo staff */}
+                                            {(isSuperAdminFallback || (viewMode === 'staff' && currentUserProfile?.role === 'admin')) && (
                                                 <button onClick={() => { setResetTarget({ id: item.id, name: item.name }); setShowResetModal(true); }} className="p-2 text-orange-600 hover:bg-orange-50 rounded-full transition-colors" title="Blanquear Contraseña"><Lock size={18} /></button>
                                             )}
                                             <button onClick={() => openEditModal(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Editar"><Pencil size={18} /></button>
@@ -638,6 +767,93 @@ export default function Users() {
                                 {isProcessing ? 'Guardando...' : 'Guardar Cambios'}
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL BLANQUEAR CONTRASEÑA */}
+            {showResetModal && resetTarget && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="bg-orange-600 p-4 flex justify-between items-center text-white">
+                            <h3 className="font-bold flex items-center gap-2"><Lock size={18} /> Blanquear Contraseña</h3>
+                            <button onClick={() => { setShowResetModal(false); setResetTarget(null); setNewPassword(''); }}><X /></button>
+                        </div>
+
+                        <form onSubmit={handleAdminResetPassword} className="p-6 space-y-4">
+                            <div className="text-center mb-4">
+                                <p className="text-gray-600">Nueva contraseña para:</p>
+                                <p className="font-bold text-lg text-gray-800">{resetTarget.name}</p>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Nueva Contraseña</label>
+                                <input
+                                    type="password"
+                                    required
+                                    minLength={6}
+                                    placeholder="Mínimo 6 caracteres"
+                                    className="w-full p-3 border rounded-lg mt-1"
+                                    value={newPassword}
+                                    onChange={e => setNewPassword(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isProcessing || newPassword.length < 6}
+                                className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white font-bold py-3 rounded-lg shadow-md transition-colors"
+                            >
+                                {isProcessing ? 'Actualizando...' : '🔐 Actualizar Contraseña'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL EMPLEADOS ELIMINADOS */}
+            {showDeletedModal && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="bg-gray-800 p-4 flex justify-between items-center text-white">
+                            <h3 className="font-bold flex items-center gap-2"><Trash2 size={18} /> Empleados Eliminados</h3>
+                            <button onClick={() => setShowDeletedModal(false)}><X /></button>
+                        </div>
+
+                        <div className="p-4 max-h-96 overflow-y-auto">
+                            {deletedStaff.length === 0 ? (
+                                <p className="text-gray-500 text-center py-8">No hay empleados eliminados</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {deletedStaff.map((staff) => (
+                                        <div key={staff.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border hover:bg-gray-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-gray-200 rounded-full">
+                                                    <User size={16} className="text-gray-500" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-800">{staff.name || 'Sin Nombre'}</p>
+                                                    <p className="text-xs text-gray-500">{staff.email || 'Sin Email'} • {staff.role}</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleReactivate(staff)}
+                                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1"
+                                            >
+                                                <Plus size={14} /> Reactivar
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t p-3 bg-gray-50 text-center">
+                            <p className="text-xs text-gray-500">
+                                Estos empleados fueron eliminados pero pueden ser reactivados
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}

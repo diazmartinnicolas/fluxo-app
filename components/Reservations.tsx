@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import {
   CalendarClock, Plus, Search, Trash2, X,
-  Save, Users, Phone, MessageCircle, Check, Calendar
+  Save, Users, Phone, MessageCircle, Check, Calendar, Pencil
 } from 'lucide-react';
 import { getReservationLink } from '../utils/whatsapp';
 import { ReservationSchema } from '../schemas/reservations';
@@ -18,6 +18,7 @@ export default function Reservations() {
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null); // ID de la reserva siendo editada
 
   // Formulario
   const [formData, setFormData] = useState({
@@ -88,6 +89,81 @@ export default function Reservations() {
 
     } catch (error: any) {
       toast.error("Error guardando: " + error.message);
+    }
+  };
+
+  // Función para editar una reserva existente
+  const handleEdit = (reservation: any) => {
+    setFormData({
+      client_name: reservation.client_name || '',
+      phone: reservation.phone || '',
+      date: reservation.date || new Date().toISOString().split('T')[0],
+      time: reservation.time || '21:00',
+      pax: reservation.pax || 2,
+      notes: reservation.notes || ''
+    });
+    setEditingId(reservation.id);
+    setIsModalOpen(true);
+  };
+
+  // Función para actualizar una reserva
+  const handleUpdate = async () => {
+    if (!editingId) {
+      console.error("No hay editingId definido");
+      return;
+    }
+
+    console.log("Actualizando reserva con ID:", editingId);
+
+    const validation = ReservationSchema.safeParse(formData);
+    if (!validation.success) {
+      return toast.error("⚠️ " + validation.error.issues[0].message);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('reservations')
+        .update({
+          client_name: formData.client_name,
+          phone: formData.phone,
+          date: formData.date,
+          time: formData.time,
+          pax: formData.pax,
+          notes: formData.notes
+        })
+        .eq('id', editingId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error de Supabase:", error);
+        throw error;
+      }
+
+      console.log("Reserva actualizada:", data);
+
+      // Actualizar estado local con los datos devueltos por Supabase
+      setReservations(prev => prev.map(r =>
+        r.id === editingId
+          ? { ...r, ...data }
+          : r
+      ));
+
+      setIsModalOpen(false);
+      setEditingId(null);
+      toast.success("Reserva actualizada con éxito");
+
+      setFormData({
+        client_name: '',
+        phone: '',
+        date: new Date().toISOString().split('T')[0],
+        time: '21:00',
+        pax: 2,
+        notes: ''
+      });
+
+    } catch (error: any) {
+      toast.error("Error actualizando: " + error.message);
     }
   };
 
@@ -231,6 +307,15 @@ export default function Reservations() {
                           <MessageCircle size={18} />
                         </button>
 
+                        {/* Botón Editar */}
+                        <button
+                          onClick={() => handleEdit(res)}
+                          className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Editar reserva"
+                        >
+                          <Pencil size={18} />
+                        </button>
+
                         {res.status !== 'confirmada' && (
                           <button onClick={() => handleMarkReady(res.id)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg">
                             <Check size={18} />
@@ -254,8 +339,10 @@ export default function Reservations() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
             <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg text-gray-800">Nueva Reserva</h3>
-              <button onClick={() => setIsModalOpen(false)}><X size={20} /></button>
+              <h3 className="font-bold text-lg text-gray-800">
+                {editingId ? 'Editar Reserva' : 'Nueva Reserva'}
+              </h3>
+              <button onClick={() => { setIsModalOpen(false); setEditingId(null); }}><X size={20} /></button>
             </div>
             <div className="p-5 space-y-3">
               <input autoFocus className="w-full p-3 border rounded-lg text-sm" placeholder="Nombre Cliente" value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} />
@@ -281,8 +368,11 @@ export default function Reservations() {
 
               <textarea className="w-full p-3 border rounded-lg text-sm h-20 resize-none" placeholder="Notas (cumpleaños, sillita...)" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
 
-              <button onClick={handleSave} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg mt-2">
-                Guardar Reserva
+              <button
+                onClick={editingId ? handleUpdate : handleSave}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2"
+              >
+                {editingId ? <><Pencil size={18} /> Actualizar Reserva</> : 'Guardar Reserva'}
               </button>
             </div>
           </div>
