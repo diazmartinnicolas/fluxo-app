@@ -4,7 +4,8 @@ import { logAction } from '../services/audit';
 import {
   Users, Search, Plus, Trash2, Edit, X,
   Save, MapPin, Phone, UserCheck, RefreshCw,
-  Gift, CalendarHeart, Settings, ToggleLeft, ToggleRight, CheckCircle, ArrowRight
+  Gift, CalendarHeart, Settings, ToggleLeft, ToggleRight, CheckCircle, ArrowRight,
+  History, ShoppingBag, TrendingUp
 } from 'lucide-react';
 import { getBirthdayLink } from '../utils/whatsapp';
 import { CustomerSchema } from '../schemas/customers';
@@ -25,6 +26,12 @@ export default function Customers() {
 
   // Estado para controlar a quién ya le enviamos saludo en esta sesión
   const [sentBirthdays, setSentBirthdays] = useState<string[]>([]);
+
+  // Estado para modal de historial
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [selectedClientForHistory, setSelectedClientForHistory] = useState<any>(null);
+  const [clientOrders, setClientOrders] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Configuración de Cumpleaños
   const [birthdayConfig, setBirthdayConfig] = useState(() => {
@@ -119,6 +126,55 @@ export default function Customers() {
       await supabase.from('clients').update({ is_active: false }).eq('id', id);
       fetchClients();
     } catch (error: any) { alert("Error: " + error.message); }
+  };
+
+  // --- VER HISTORIAL DE CLIENTE ---
+  const handleViewHistory = async (client: any) => {
+    setSelectedClientForHistory(client);
+    setHistoryModalOpen(true);
+    setLoadingHistory(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, order_items(*, products(name, price))')
+        .eq('client_id', client.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setClientOrders(data || []);
+    } catch (error) {
+      console.error('Error cargando historial:', error);
+      toast.error('Error al cargar historial');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Calcular estadísticas del cliente
+  const getClientStats = () => {
+    if (clientOrders.length === 0) return { total: 0, count: 0, avg: 0, favorites: [] };
+
+    const total = clientOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const count = clientOrders.length;
+    const avg = count > 0 ? total / count : 0;
+
+    // Productos favoritos
+    const productCount: Record<string, { name: string; count: number }> = {};
+    clientOrders.forEach(order => {
+      order.order_items?.forEach((item: any) => {
+        const name = item.products?.name || 'Producto';
+        if (!productCount[name]) productCount[name] = { name, count: 0 };
+        productCount[name].count += item.quantity || 1;
+      });
+    });
+
+    const favorites = Object.values(productCount)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return { total, count, avg, favorites };
   };
 
   // --- LÓGICA DE CUMPLEAÑOS INTELIGENTE 🧠 ---
@@ -318,6 +374,9 @@ export default function Customers() {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleViewHistory(client)} className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg" title="Ver Historial">
+                          <History size={18} />
+                        </button>
                         <button onClick={() => handleOpenEdit(client)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Edit size={18} /></button>
                         <button onClick={() => handleDelete(client.id, client.name)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={18} /></button>
                       </div>
@@ -373,6 +432,157 @@ export default function Customers() {
                 <input type="date" className="w-full p-3 border rounded-lg" value={formData.birth_date} onChange={e => setFormData({ ...formData, birth_date: e.target.value })} />
               </div>
               <button onClick={handleSave} className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3.5 rounded-xl">Guardar Cliente</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL HISTORIAL DE CLIENTE */}
+      {historyModalOpen && selectedClientForHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-5 text-white flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-xl flex items-center gap-2">
+                  <History size={24} /> Historial de {selectedClientForHistory.name}
+                </h3>
+                <p className="text-purple-200 text-sm mt-1">
+                  {selectedClientForHistory.phone || 'Sin teléfono'} • {selectedClientForHistory.address || 'Sin dirección'}
+                </p>
+              </div>
+              <button
+                onClick={() => setHistoryModalOpen(false)}
+                className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Contenido */}
+            <div className="flex-1 overflow-auto p-5">
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  <span className="ml-3 text-gray-500">Cargando historial...</span>
+                </div>
+              ) : clientOrders.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <ShoppingBag size={48} className="mx-auto mb-3 opacity-50" />
+                  <p>Este cliente aún no tiene pedidos</p>
+                </div>
+              ) : (
+                <>
+                  {/* Estadísticas */}
+                  {(() => {
+                    const stats = getClientStats();
+                    return (
+                      <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                          <div className="text-2xl font-bold text-green-600">
+                            $ {stats.total.toLocaleString('es-AR')}
+                          </div>
+                          <div className="text-xs text-green-600/70 font-medium">Total gastado</div>
+                        </div>
+                        <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                          <div className="text-2xl font-bold text-blue-600">{stats.count}</div>
+                          <div className="text-xs text-blue-600/70 font-medium">Pedidos</div>
+                        </div>
+                        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                          <div className="text-2xl font-bold text-purple-600">
+                            $ {Math.round(stats.avg).toLocaleString('es-AR')}
+                          </div>
+                          <div className="text-xs text-purple-600/70 font-medium">Ticket promedio</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Productos Favoritos */}
+                  {(() => {
+                    const stats = getClientStats();
+                    if (stats.favorites.length === 0) return null;
+                    return (
+                      <div className="mb-6">
+                        <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                          <TrendingUp size={16} className="text-orange-500" /> Productos Favoritos
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {stats.favorites.map((fav, idx) => (
+                            <span
+                              key={idx}
+                              className="text-xs px-3 py-1.5 bg-orange-50 text-orange-700 rounded-full border border-orange-100 font-medium"
+                            >
+                              {fav.name} ({fav.count})
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Lista de Pedidos */}
+                  <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <ShoppingBag size={16} className="text-gray-500" /> Últimos Pedidos
+                  </h4>
+                  <div className="space-y-3">
+                    {clientOrders.map((order) => (
+                      <div key={order.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <span className="font-bold text-gray-800">#{order.ticket_number}</span>
+                            <span className="text-xs text-gray-400 ml-2">
+                              {new Date(order.created_at).toLocaleDateString('es-AR', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <span className="font-bold text-green-600">
+                            $ {order.total?.toLocaleString('es-AR')}
+                          </span>
+                        </div>
+
+                        {/* Items del pedido */}
+                        <div className="text-sm text-gray-600">
+                          {order.order_items?.slice(0, 3).map((item: any, idx: number) => (
+                            <span key={idx}>
+                              {item.quantity}x {item.products?.name || 'Producto'}
+                              {idx < Math.min(order.order_items.length, 3) - 1 ? ', ' : ''}
+                            </span>
+                          ))}
+                          {order.order_items?.length > 3 && (
+                            <span className="text-gray-400"> +{order.order_items.length - 3} más</span>
+                          )}
+                        </div>
+
+                        {/* Badge de tipo de pedido */}
+                        {order.order_type && order.order_type !== 'local' && (
+                          <span className={`mt-2 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${order.order_type === 'delivery'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-amber-100 text-amber-700'
+                            }`}>
+                            {order.order_type === 'delivery' ? '🛵 Delivery' : '🏃 Para llevar'}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t p-4 bg-gray-50">
+              <button
+                onClick={() => setHistoryModalOpen(false)}
+                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl transition-colors"
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         </div>

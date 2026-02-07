@@ -25,11 +25,11 @@ const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: str
   });
 
   return (
-    <div ref={ref} className="hidden print:block p-4 bg-white text-black font-mono text-sm w-[80mm] mx-auto leading-tight">
+    <div ref={ref} className="hidden print:block p-1 bg-white text-black font-mono text-[10px] w-[58mm] mx-auto leading-tight">
 
       {/* 1. HEADER */}
       <div className="text-center mb-4 border-b border-black pb-2 border-dashed">
-        <h2 className="font-black text-2xl uppercase leading-none mb-2">
+        <h2 className="font-black text-lg uppercase leading-none mb-1">
           {companyName || 'FLUXO KITCHEN'}
         </h2>
         <p className="text-[10px]">
@@ -39,12 +39,18 @@ const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: str
 
       {/* 2. INFO TICKET, PAGO Y CLIENTE */}
       <div className="mb-4 border-b border-black border-dashed pb-2">
-        <div className="flex justify-between items-end font-bold text-xl mb-1">
+        <div className="flex justify-between items-end font-bold text-base mb-1">
           <span>TICKET:</span>
           <span>#{order.ticket_number}</span>
         </div>
 
-        <div className="text-right mb-3">
+        <div className="text-right mb-3 flex justify-between items-center">
+          {/* Tipo de pedido */}
+          {order.order_type && (
+            <span className="text-sm font-black border-2 border-black px-2 py-0.5 rounded-sm uppercase">
+              {order.order_type === 'delivery' ? '🛵 DELIVERY' : order.order_type === 'takeaway' ? '🏃 P/LLEVAR' : '🍽️ MESA'}
+            </span>
+          )}
           <span className="text-sm font-black border-2 border-black px-2 py-0.5 rounded-sm uppercase">
             PAGO: {paymentMethod}
           </span>
@@ -57,16 +63,30 @@ const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: str
             {/* Nombre del Cliente */}
             <span className="text-base block">{order.client?.name || 'Mostrador'}</span>
 
-            {/* --- NUEVO: DIRECCIÓN AGREGADA --- */}
-            <span className="text-sm block font-medium mt-0.5">
-              {order.client?.address || 'Retira en local / Sin dirección'}
-            </span>
+            {/* Dirección de delivery si existe */}
+            {order.order_type === 'delivery' && order.delivery_address ? (
+              <span className="text-sm block font-medium mt-0.5">
+                📍 {order.delivery_address}
+              </span>
+            ) : (
+              <span className="text-sm block font-medium mt-0.5">
+                {order.client?.address || 'Retira en local / Sin dirección'}
+              </span>
+            )}
           </div>
 
           <div>
             <span className="text-xs font-normal block mb-0.5">Teléfono:</span>
-            <span>{order.client?.phone || 'Sin teléfono'}</span>
+            <span>{order.delivery_phone || order.client?.phone || 'Sin teléfono'}</span>
           </div>
+
+          {/* Notas de delivery si existen */}
+          {order.order_type === 'delivery' && order.delivery_notes && (
+            <div>
+              <span className="text-xs font-normal block mb-0.5">Notas Delivery:</span>
+              <span className="text-sm">{order.delivery_notes}</span>
+            </div>
+          )}
         </div>
 
         <p className="text-[10px] mt-2 text-right">
@@ -83,15 +103,15 @@ const KitchenTicket = forwardRef<HTMLDivElement, { order: any; companyName?: str
 
             return (
               <li key={index} className="flex flex-col gap-0.5">
-                <div className="flex gap-2 items-start">
-                  <span className="font-black text-lg w-6 text-right leading-none">{item.quantity}</span>
-                  <span className="mx-1 pt-1">x</span>
-                  <span className="flex-1 text-lg font-bold uppercase leading-none pt-0.5">
+                <div className="flex gap-1 items-start">
+                  <span className="font-black text-base w-4 text-right leading-none">{item.quantity}</span>
+                  <span className="mx-0.5 pt-0.5">x</span>
+                  <span className="flex-1 text-base font-bold uppercase leading-none pt-0.5">
                     {displayName}
                   </span>
                 </div>
                 {notes && (
-                  <span className="text-xs text-gray-600 ml-10 italic">
+                  <span className="text-[10px] text-gray-600 ml-5 italic block leading-tight">
                     ({notes})
                   </span>
                 )}
@@ -256,10 +276,25 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, companyName }
                     <h3 className="font-bold text-lg flex items-center gap-2">
                       #{order.ticket_number || (typeof order.id === 'string' ? order.id.slice(-4) : order.id)}
                       {isDemo && <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded uppercase">Demo</span>}
+                      {/* Badge de tipo de pedido */}
+                      {order.order_type && order.order_type !== 'local' && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${order.order_type === 'delivery'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-amber-500 text-white'
+                          }`}>
+                          {order.order_type === 'delivery' ? '🛵 Delivery' : '🏃 Llevar'}
+                        </span>
+                      )}
                     </h3>
                     <p className={`text-xs font-medium truncate w-32 md:w-40 ${isDemo ? 'text-orange-800' : 'text-gray-500'}`}>
                       {order.client?.name || 'Cliente Mostrador'}
                     </p>
+                    {/* Mostrar dirección de delivery si existe */}
+                    {order.order_type === 'delivery' && order.delivery_address && (
+                      <p className="text-[10px] text-blue-600 font-medium truncate w-40">
+                        📍 {order.delivery_address}
+                      </p>
+                    )}
                   </div>
                   <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${isDemo ? 'bg-white border-orange-200 text-orange-800' : 'bg-white border-gray-200 text-gray-500'}`}>
                     <Clock size={12} />

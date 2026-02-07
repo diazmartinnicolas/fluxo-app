@@ -23,16 +23,18 @@ import Users from './components/Users';
 import History from './components/History';
 import Reservations from './components/Reservations';
 import Reports from './components/Reports';
+import CashRegister from './components/CashRegister';
+import TableLayout from './components/TableLayout';
 
 // Componentes - UI
 import { StatusOverlay } from './components/ui/StatusOverlay';
 import { Button } from './components/atoms/Button';
+import { ConnectionStatus } from './components/atoms/ConnectionStatus';
 
-// Iconos
 import {
   ShoppingCart, ChefHat, Users as UsersIcon, Package,
   History as HistoryIcon, UserCog, LogOut, CalendarClock, Menu,
-  Crown, BarChart3, Briefcase, Lock, Building2, Flame, X, Tag
+  Crown, BarChart3, Briefcase, Lock, Building2, Flame, X, Tag, Calculator, LayoutGrid
 } from 'lucide-react';
 
 // ============================================================
@@ -81,7 +83,8 @@ function SidebarItem({ icon, label, active, onClick, shortcut }: SidebarItemProp
 
 function App() {
   const {
-    session, userProfile, loading, signOut, refreshData
+    session, userProfile, loading, signOut, refreshData,
+    isOnline, pendingOrdersCount, syncPendingOrders
   } = useApp();
 
   // Hook de autenticación para permisos
@@ -96,6 +99,15 @@ function App() {
 
   // Estado para modo demo
   const [demoOrders, setDemoOrders] = useState<any[]>([]);
+
+  // Estado para mesa seleccionada desde el salón (para agregar productos)
+  const [tableForPOS, setTableForPOS] = useState<any>(null);
+
+  // Función para navegar al POS con una mesa
+  const handleAddProductsToTable = (table: any, existingOrder: any) => {
+    setTableForPOS({ table, existingOrder });
+    setActiveTab('pos');
+  };
 
   // ----------------------------------------------------------
   // EFECTOS
@@ -246,6 +258,11 @@ function App() {
                 <SidebarItem icon={<CalendarClock size={20} />} label="Reservas" active={activeTab === 'reservations'} onClick={() => setActiveTab('reservations')} shortcut="F4" />
               )}
 
+              {/* Salón/Mesas - visible para admin, cajero, mozo (NO cocina) */}
+              {(auth.isAdmin || auth.canAccessPOS) && (
+                <SidebarItem icon={<LayoutGrid size={20} />} label="Salón" active={activeTab === 'tables'} onClick={() => setActiveTab('tables')} shortcut="F5" />
+              )}
+
               {auth.isAdmin && (
                 <>
                   <div className="h-px bg-gray-100 my-4" />
@@ -259,6 +276,7 @@ function App() {
                   <SidebarItem icon={<Tag size={20} />} label="Promociones" active={activeTab === 'promotions'} onClick={() => setActiveTab('promotions')} />
                   <SidebarItem icon={<HistoryIcon size={20} />} label="Historial" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
                   <SidebarItem icon={<BarChart3 size={20} />} label="Reportes" active={activeTab === 'reports'} onClick={() => setActiveTab('reports')} />
+                  <SidebarItem icon={<Calculator size={20} />} label="Caja" active={activeTab === 'cashregister'} onClick={() => setActiveTab('cashregister')} />
                 </>
               )}
             </nav>
@@ -313,6 +331,8 @@ function App() {
                 <POS
                   isDemo={auth.isDemo}
                   onDemoOrder={handleDemoOrder}
+                  initialTable={tableForPOS}
+                  onTableProcessed={() => setTableForPOS(null)}
                 />
               )}
               {activeTab === 'kitchen' && (
@@ -329,6 +349,8 @@ function App() {
               {activeTab === 'reports' && <Reports />}
               {activeTab === 'promotions' && <Promotions />}
               {activeTab === 'users' && <Users />}
+              {activeTab === 'cashregister' && <CashRegister />}
+              {activeTab === 'tables' && <TableLayout onAddProducts={handleAddProductsToTable} />}
             </motion.div>
           </AnimatePresence>
         </main>
@@ -371,6 +393,24 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* ========================================
+            INDICADOR DE CONEXIÓN
+        ======================================== */}
+        <ConnectionStatus
+          isOnline={isOnline}
+          isSyncing={false}
+          pendingCount={pendingOrdersCount}
+          onSync={async () => {
+            toast.info('Sincronizando pedidos pendientes...');
+            const synced = await syncPendingOrders();
+            if (synced > 0) {
+              toast.success(`${synced} pedido(s) sincronizado(s)`);
+            } else {
+              toast.info('No hay pedidos pendientes para sincronizar');
+            }
+          }}
+        />
       </div>
     </CartProvider>
   );

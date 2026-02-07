@@ -1,6 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { ShoppingCart, Tag, Receipt } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { ShoppingCart, Tag, Receipt, X, Printer } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '../services/supabase';
+import { useReactToPrint } from 'react-to-print';
 
 // Contextos
 import { useApp } from '../context/AppContext';
@@ -17,7 +19,7 @@ import { ProductCard } from './molecules/ProductCard';
 import { CartItem } from './molecules/CartItem';
 import { PaymentMethodSelector } from './molecules/PaymentMethodSelector';
 import { CustomerSelector } from './molecules/CustomerSelector';
-import { CategoryTabs } from './molecules/CategoryTabs';
+import { OrderTypeSelector, OrderType, DeliveryForm, DeliveryInfo, CategoryTabs, TableSelector } from './molecules';
 
 // Tipos
 import { Product, Customer } from '../types';
@@ -43,6 +45,13 @@ const CATEGORIES = [
   'Otros'
 ];
 
+const EMPANADA_FLAVORS = [
+  'Carne', 'Pollo', 'Jamón y Queso', 'Cebolla y Queso',
+  'Apio y Roquefort', 'Humita', 'Calabresa', 'Caprese',
+  'Verdura', 'Carne Picante', 'Panceta y Ciruela',
+  'Bondiola', 'Pollo Puerro Champignones', 'Roquefort y Jamón'
+];
+
 // ============================================================
 // COMPONENTE PRINCIPAL: POS
 // ============================================================
@@ -50,9 +59,116 @@ const CATEGORIES = [
 interface POSProps {
   isDemo?: boolean;
   onDemoOrder?: (order: any) => void;
+  initialTable?: { table: any; existingOrder: any } | null;
+  onTableProcessed?: () => void;
 }
 
-const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
+// --- COMPONENTE TICKET TÉRMICO DE COCINA (Visible solo al imprimir) ---
+const KitchenTicket = React.forwardRef<HTMLDivElement, { order: any; companyName?: string }>(({ order, companyName }, ref) => {
+  if (!order) return null;
+
+  const paymentMethod = order.payment_type ? order.payment_type.toUpperCase() : 'EFECTIVO';
+
+  const sortedItems = [...(order.order_items || [])].sort((a: any, b: any) => {
+    const catA = a.product?.category || '';
+    const catB = b.product?.category || '';
+    const nameA = a.product?.name || '';
+    const nameB = b.product?.name || '';
+
+    const catComparison = catA.localeCompare(catB);
+    if (catComparison !== 0) return catComparison;
+    return nameA.localeCompare(nameB);
+  });
+
+  return (
+    <div ref={ref} className="hidden print:block p-1 bg-white text-black font-mono text-[10px] w-[58mm] mx-auto leading-tight">
+      <style>{`
+        @page { 
+          margin: 0; 
+          size: 58mm auto;
+        }
+        @media print {
+          body { margin: 0; padding: 0; }
+          header, footer, .no-print { display: none !important; }
+        }
+      `}</style>
+      <div className="text-center mb-4 border-b border-black pb-2 border-dashed">
+        <h2 className="font-black text-lg uppercase leading-none mb-1">
+          {companyName || 'FLUXO KITCHEN'}
+        </h2>
+        <p className="text-[10px]">
+          {new Date().toLocaleDateString()} - {new Date().toLocaleTimeString()}
+        </p>
+      </div>
+
+      <div className="mb-4 border-b border-black border-dashed pb-2">
+        <div className="flex justify-between items-end font-bold text-base mb-1">
+          <span>TICKET:</span>
+          <span>#{order.ticket_number}</span>
+        </div>
+
+        <div className="text-right mb-3 flex justify-between items-center">
+          {order.order_type && (
+            <span className="text-sm font-black border-2 border-black px-2 py-0.5 rounded-sm uppercase">
+              {order.order_type === 'delivery' ? '🛵 DELIVERY' : order.order_type === 'takeaway' ? '🏃 P/LLEVAR' : '🍽️ MESA'}
+            </span>
+          )}
+          <span className="text-sm font-black border-2 border-black px-2 py-0.5 rounded-sm uppercase">
+            PAGO: {paymentMethod}
+          </span>
+        </div>
+
+        <div className="text-sm font-bold uppercase space-y-2">
+          <div>
+            <span className="text-xs font-normal block mb-0.5">Cliente / Dirección:</span>
+            <span className="text-base block">{order.client?.name || 'Mostrador'}</span>
+            {order.order_type === 'delivery' && order.delivery_address ? (
+              <span className="text-sm block font-medium mt-0.5">📍 {order.delivery_address}</span>
+            ) : (
+              <span className="text-sm block font-medium mt-0.5">{order.client?.address || 'Retira en local'}</span>
+            )}
+          </div>
+          <div>
+            <span className="text-xs font-normal block mb-0.5">Teléfono:</span>
+            <span>{order.delivery_phone || order.client?.phone || 'Sin teléfono'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-b border-black border-dashed py-2 mb-4">
+        <ul className="space-y-3">
+          {sortedItems.map((item: any, index: number) => (
+            <li key={index} className="flex flex-col gap-0.5">
+              <div className="flex gap-1 items-start">
+                <span className="font-black text-base w-4 text-right leading-none">{item.quantity}</span>
+                <span className="mx-0.5 pt-0.5">x</span>
+                <span className="flex-1 text-base font-bold uppercase leading-none pt-0.5">
+                  {item.item_name || item.product?.name}
+                </span>
+              </div>
+              {item.notes && (
+                <span className="text-[10px] text-gray-600 ml-5 italic block leading-tight">
+                  ({item.notes})
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mb-4">
+        <p className="text-xs font-bold mb-1">OBSERVACIONES:</p>
+        <div className="w-full h-24 border-2 border-black border-dashed rounded-md"></div>
+      </div>
+
+      <div className="text-center text-xs font-bold mt-2">
+        <p>*** FIN DE ORDEN ***</p>
+      </div>
+    </div>
+  );
+});
+
+const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder, initialTable, onTableProcessed }) => {
   // ----------------------------------------------------------
   // CONTEXTOS Y HOOKS
   // ----------------------------------------------------------
@@ -62,8 +178,10 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
     customers,
     promotions,
     createOrder,
+    createCustomer,
     toggleFavorite,
-    session
+    session,
+    userProfile
   } = useApp();
 
   const {
@@ -102,6 +220,72 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
   const [newCustomerData, setNewCustomerData] = useState({ name: '', address: '', phone: '' });
 
+  // Estado para Empanadas
+  const [showEmpanadaSelector, setShowEmpanadaSelector] = useState(false);
+  const [currentEmpanadaProduct, setCurrentEmpanadaProduct] = useState<Product | null>(null);
+  const [empanadaSelections, setEmpanadaSelections] = useState<Record<string, number>>({});
+
+  // Estado para tipo de pedido y delivery
+  const [orderType, setOrderType] = useState<OrderType>('local');
+  const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
+    address: '',
+    phone: '',
+    notes: ''
+  });
+  const [selectedTable, setSelectedTable] = useState<any>(null);
+
+  // Estado para impresión
+  const [printingOrder, setPrintingOrder] = useState<any>(null);
+  const componentRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: printingOrder ? `Comanda-${printingOrder.ticket_number}` : 'Comanda',
+  });
+
+  // Auto-completar datos de delivery cuando se selecciona Delivery o cambia el cliente
+  const selectedCustomer = customerSelector.selectedCustomer;
+  useEffect(() => {
+    if (orderType === 'delivery' && selectedCustomer) {
+      // Siempre usar los datos del cliente cuando se selecciona delivery
+      setDeliveryInfo({
+        address: selectedCustomer.address || '',
+        phone: selectedCustomer.phone || '',
+        notes: '' // Limpiar notas al cambiar
+      });
+    } else if (!selectedCustomer) {
+      // Si no hay cliente, limpiar los campos
+      setDeliveryInfo({ address: '', phone: '', notes: '' });
+    }
+  }, [orderType, selectedCustomer]);
+
+  // Efecto para cargar mesa desde el salón (para agregar productos)
+  useEffect(() => {
+    if (initialTable?.table) {
+      setOrderType('local');
+      setSelectedTable(initialTable.table);
+
+      // Si hay un pedido existente, cargar los items al carrito
+      if (initialTable.existingOrder?.order_items) {
+        // Limpiar carrito primero
+        clearCart();
+
+        // Agregar cada item del pedido existente al carrito
+        initialTable.existingOrder.order_items.forEach((item: any) => {
+          const product = products.find(p => p.id === item.product_id);
+          if (product) {
+            for (let i = 0; i < item.quantity; i++) {
+              addToCart(product);
+            }
+          }
+        });
+      }
+
+      // Notificar que se procesó
+      onTableProcessed?.();
+    }
+  }, [initialTable]);
+
   // ----------------------------------------------------------
   // PRODUCTOS FILTRADOS
   // ----------------------------------------------------------
@@ -131,6 +315,18 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
     const isHalf = product.category === 'Mitades' || product.name.toLowerCase().includes('mitad');
 
     if (!isHalf) {
+      // Interceptar docenas, medias docenas o empanadas individuales para elegir gusto
+      const isEmpanadaFlavorSelect = (product.category === 'Empanadas' ||
+        product.name.toLowerCase().includes('empanada') ||
+        product.name.toLowerCase().includes('clasica'));
+
+      if (isEmpanadaFlavorSelect) {
+        setCurrentEmpanadaProduct(product);
+        setEmpanadaSelections({});
+        setShowEmpanadaSelector(true);
+        return;
+      }
+
       addToCart(product);
       return;
     }
@@ -164,9 +360,16 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
     }
   }, [products, toggleFavorite]);
 
-  const handleCheckout = useCallback(async () => {
-    if (cart.length === 0 || !customerSelector.selectedCustomerId) {
-      toast.error("Selecciona un cliente y agrega productos");
+  const handleCheckout = useCallback(async (shouldPrint: boolean = false) => {
+    // Validaciones según tipo de pedido
+    if (cart.length === 0) {
+      toast.error("Agrega productos al carrito");
+      return;
+    }
+
+    // Para delivery, requerir dirección
+    if (orderType === 'delivery' && !deliveryInfo.address) {
+      toast.error("Ingresa la dirección de entrega");
       return;
     }
 
@@ -185,6 +388,7 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
           ticket_number: nextTicket,
           created_at: new Date().toISOString(),
           status: 'pendiente',
+          order_type: orderType,
           client: { name: customerSelector.searchTerm },
           order_items: cart.map(i => ({ product: { name: i.name }, quantity: 1 }))
         });
@@ -193,6 +397,8 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
         customerSelector.clearSelection();
         resetCheckout();
         setMobileView('products');
+        setOrderType('local');
+        setDeliveryInfo({ address: '', phone: '', notes: '' });
         setIsProcessing(false);
         toast.success("¡Pedido demo enviado!");
       }, 600);
@@ -219,6 +425,12 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
           const originalPromo = promotions.find(p => p.id === promoId);
           productId = originalPromo?.product_1_id || products[0]?.id;
         }
+        // Si es un producto personalizado con prefijo 'pack-' siguiendo el formato 'pack-{productId}-{timestamp}'
+        else if (item.id.toString().startsWith('pack-')) {
+          const idParts = item.id.toString().split('-');
+          // El ID original está entre 'pack-' y el timestamp final
+          productId = idParts.slice(1, -1).join('-');
+        }
 
         return {
           product_id: productId,
@@ -229,18 +441,82 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
         };
       });
 
-      await createOrder({
-        client_id: customerSelector.selectedCustomerId,
+      // Crear el pedido con table_id si aplica
+      // client_id debe ser null (no string vacío) si no hay cliente
+      const orderData: any = {
+        client_id: customerSelector.selectedCustomerId || null,
         total: totals.finalTotal,
         payment_type: paymentMethod,
-        user_id: session.user.id
-      }, orderItems);
+        user_id: session.user.id,
+        order_type: orderType,
+        delivery_address: orderType === 'delivery' ? deliveryInfo.address : null,
+        delivery_phone: orderType === 'delivery' ? deliveryInfo.phone : null,
+        delivery_notes: orderType === 'delivery' ? deliveryInfo.notes : null,
+        table_id: selectedTable?.id || null
+      };
+
+      const createdOrder = await createOrder(orderData, orderItems);
+
+      // Si se solicitó imprimir, enviamos al servidor de impresión local (impresión silenciosa)
+      if (shouldPrint && createdOrder) {
+        const fullOrderForPrint = {
+          ...createdOrder,
+          companyName: userProfile?.companies?.name || 'FLUXO',
+          client: selectedCustomer,
+          table: selectedTable, // Agregar info de la mesa
+          order_items: orderItems.map((item: any) => ({
+            ...item,
+            product: products.find(p => p.id === item.product_id)
+          }))
+        };
+
+        // Intentar impresión silenciosa via servidor local
+        try {
+          const printResponse = await fetch('http://localhost:3001/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fullOrderForPrint)
+          });
+
+          if (printResponse.ok) {
+            toast.success('🖨️ Ticket enviado a impresora');
+          } else {
+            // Si falla el servidor local, usar impresión del navegador como fallback
+            setPrintingOrder(fullOrderForPrint);
+            setTimeout(() => handlePrint(), 300);
+          }
+        } catch (printError) {
+          // Si no hay servidor de impresión, usar fallback del navegador
+          console.log('Servidor de impresión no disponible, usando navegador');
+          setPrintingOrder(fullOrderForPrint);
+          setTimeout(() => handlePrint(), 300);
+        }
+      }
+
+      // Si se seleccionó una mesa, marcarla como ocupada y asociar el pedido
+      if (selectedTable && createdOrder?.id) {
+        await supabase
+          .from('tables')
+          .update({
+            status: 'occupied',
+            current_order_id: createdOrder.id
+          })
+          .eq('id', selectedTable.id);
+      }
 
       clearCart();
       customerSelector.clearSelection();
       resetCheckout();
       setMobileView('products');
-      toast.success("¡Pedido enviado con éxito!");
+      setOrderType('local');
+      setDeliveryInfo({ address: '', phone: '', notes: '' });
+      setSelectedTable(null);
+
+      if (selectedTable) {
+        toast.success(`¡Pedido enviado a ${selectedTable.name}!`);
+      } else {
+        toast.success("¡Pedido enviado con éxito!");
+      }
     } catch (err: any) {
       toast.error("Error al procesar pedido: " + err.message);
     } finally {
@@ -249,7 +525,8 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
   }, [
     cart, customerSelector, isDemo, onDemoOrder,
     createOrder, totals, paymentMethod, session,
-    groupedCart, products, promotions, clearCart, resetCheckout, setIsProcessing
+    groupedCart, products, promotions, clearCart, resetCheckout, setIsProcessing,
+    orderType, deliveryInfo, selectedTable, handlePrint, selectedCustomer
   ]);
 
   const handleQuickCustomerCreate = useCallback(async () => {
@@ -259,14 +536,82 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
     }
 
     try {
-      // TODO: Conectar con createCustomer del contexto
-      toast.info("Funcionalidad de crear cliente rápido pendiente");
+      setIsProcessing(true);
+      const company_id = userProfile?.company_id || (userProfile as any)?.companies?.id;
+
+      const newCustomer = await createCustomer({
+        name: newCustomerData.name,
+        address: newCustomerData.address || null,
+        phone: newCustomerData.phone || null,
+        company_id: company_id,
+        is_active: true
+      });
+
+      // Seleccionar el nuevo cliente automáticamente
+      customerSelector.selectCustomer(newCustomer);
+
+      toast.success("Cliente creado y seleccionado");
       setShowQuickCustomer(false);
       setNewCustomerData({ name: '', address: '', phone: '' });
     } catch (error: any) {
       toast.error("Error creando cliente: " + error.message);
+    } finally {
+      setIsProcessing(false);
     }
   }, [newCustomerData]);
+
+  // Lógica de validación de empanadas
+  const empanadaTargetQty = useMemo(() => {
+    if (!currentEmpanadaProduct) return { qty: 0, isFixed: false };
+    const name = currentEmpanadaProduct.name.toLowerCase();
+    if (name.includes('docena')) return { qty: 12, isFixed: true };
+    if (name.includes('1/2')) return { qty: 6, isFixed: true };
+    return { qty: 0, isFixed: false }; // Flexible para individuales
+  }, [currentEmpanadaProduct]);
+
+  const totalEmpanadasSelected = useMemo(() => {
+    return Object.values(empanadaSelections).reduce((acc, curr) => acc + (curr || 0), 0);
+  }, [empanadaSelections]);
+
+  const handleConfirmEmpanadas = useCallback(() => {
+    if (empanadaTargetQty.isFixed && totalEmpanadasSelected !== empanadaTargetQty.qty) {
+      toast.error(`Selecciona exactamente ${empanadaTargetQty.qty} empanadas (tienes ${totalEmpanadasSelected})`);
+      return;
+    }
+
+    if (totalEmpanadasSelected === 0) {
+      toast.error("Selecciona al menos un gusto");
+      return;
+    }
+
+    if (!currentEmpanadaProduct) return;
+
+    const selectionsStr = Object.entries(empanadaSelections)
+      .filter(([_, qty]) => qty > 0)
+      .map(([flavor, qty]) => `${qty} ${flavor}`)
+      .join(', ');
+
+    const finalProduct = {
+      ...currentEmpanadaProduct,
+      id: `pack-${currentEmpanadaProduct.id}-${Date.now()}`,
+      description: selectionsStr
+    };
+
+    // Si es un pack fijo (docena/media), agregamos 1 unidad del producto "pack"
+    // Si es individual, agregamos tantas unidades como empanadas se seleccionaron
+    if (empanadaTargetQty.isFixed) {
+      addToCart(finalProduct);
+    } else {
+      for (let i = 0; i < totalEmpanadasSelected; i++) {
+        // Usamos el mismo ID para que se agrupen en la vista del carrito
+        addToCart(finalProduct);
+      }
+    }
+
+    setShowEmpanadaSelector(false);
+    setEmpanadaSelections({});
+    setCurrentEmpanadaProduct(null);
+  }, [totalEmpanadasSelected, empanadaTargetQty, empanadaSelections, currentEmpanadaProduct, addToCart]);
 
   // ----------------------------------------------------------
   // UTILIDADES
@@ -460,6 +805,15 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
             onCloseDropdown={customerSelector.closeDropdown}
             onCreateNew={() => setShowQuickCustomer(true)}
           />
+
+          {/* COMPONENTE OCULTO PARA IMPRESIÓN */}
+          <div className="hidden">
+            <KitchenTicket
+              ref={componentRef}
+              order={printingOrder}
+              companyName={userProfile?.companies?.name || 'FLUXO'}
+            />
+          </div>
         </div>
 
         {/* Header del carrito */}
@@ -488,6 +842,7 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
                 key={item.id}
                 id={item.id}
                 name={item.name}
+                description={item.description}
                 price={item.price}
                 quantity={item.quantity || 1}
                 subtotalPrice={item.subtotalPrice || item.price}
@@ -515,6 +870,57 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
 
         {/* Footer: Pago y Total */}
         <div className="p-6 border-t border-gray-100 bg-gray-50 space-y-4">
+          {/* Selector de tipo de pedido */}
+          <div>
+            <p className="text-xs font-bold text-gray-600 mb-2">Tipo de Pedido</p>
+            <OrderTypeSelector
+              selected={orderType}
+              onChange={(type) => {
+                setOrderType(type);
+                if (type !== 'delivery') {
+                  setDeliveryInfo({ address: '', phone: '', notes: '' });
+                }
+                if (type !== 'local') {
+                  setSelectedTable(null);
+                }
+              }}
+            />
+          </div>
+
+          {/* Selector de Mesa (solo visible si es tipo local/mesa) */}
+          {orderType === 'local' && (
+            <div>
+              <p className="text-xs font-bold text-gray-600 mb-2">Seleccionar Mesa</p>
+              <TableSelector
+                selectedTable={selectedTable}
+                onSelectTable={setSelectedTable}
+              />
+            </div>
+          )}
+
+          {/* Información de envío EDITABLE para Delivery */}
+          {orderType === 'delivery' && (
+            <div className="bg-orange-50 p-3 rounded-lg border border-orange-100 mb-2 space-y-2">
+              <p className="text-xs font-bold text-orange-800 flex items-center gap-1">
+                📍 Envío a:
+              </p>
+              <input
+                type="text"
+                placeholder="Dirección de entrega..."
+                value={deliveryInfo.address}
+                onChange={(e) => setDeliveryInfo({ ...deliveryInfo, address: e.target.value })}
+                className="w-full p-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              />
+              <input
+                type="tel"
+                placeholder="Teléfono..."
+                value={deliveryInfo.phone}
+                onChange={(e) => setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })}
+                className="w-full p-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              />
+            </div>
+          )}
+
           {/* Selector de método de pago */}
           <PaymentMethodSelector
             selected={paymentMethod}
@@ -541,15 +947,20 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
             </div>
           </div>
 
-          {/* Botón Confirmar */}
+          {/* Botón Confirmar e Imprimir */}
           <Button
             variant="primary"
             size="lg"
             fullWidth
             isLoading={isProcessing}
-            disabled={!customerSelector.selectedCustomerId || cart.length === 0}
-            onClick={handleCheckout}
+            disabled={
+              cart.length === 0 ||
+              (orderType === 'delivery' && !deliveryInfo.address)
+            }
+            onClick={() => handleCheckout(true)}
+            className="flex items-center justify-center gap-2"
           >
+            <Printer size={20} />
             {isProcessing ? 'Procesando...' : 'Confirmar Pedido'}
           </Button>
 
@@ -564,6 +975,88 @@ const POS: React.FC<POSProps> = ({ isDemo = false, onDemoOrder }) => {
           )}
         </div>
       </aside>
+
+      {/* ========================================
+          MODAL: Seleccionar Gustos Empanadas
+      ======================================== */}
+      {showEmpanadaSelector && currentEmpanadaProduct && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] backdrop-blur-sm p-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="flex justify-between items-center mb-4 border-b pb-3">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">{currentEmpanadaProduct.name}</h3>
+                <p className={`text-sm font-medium ${empanadaTargetQty.isFixed
+                  ? (totalEmpanadasSelected === empanadaTargetQty.qty ? 'text-green-600' : 'text-orange-600')
+                  : 'text-orange-600'
+                  }`}>
+                  Seleccionado: {totalEmpanadasSelected} {empanadaTargetQty.isFixed ? `/ ${empanadaTargetQty.qty}` : ''}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowEmpanadaSelector(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-2 space-y-2 mb-6 custom-scrollbar">
+              {EMPANADA_FLAVORS.map(flavor => (
+                <div key={flavor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <span className="font-semibold text-gray-700">{flavor}</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+                      onClick={() => {
+                        const current = empanadaSelections[flavor] || 0;
+                        if (current > 0) {
+                          setEmpanadaSelections({ ...empanadaSelections, [flavor]: current - 1 });
+                        }
+                      }}
+                    >
+                      -
+                    </button>
+                    <span className="w-6 text-center font-bold text-orange-600 text-lg">
+                      {empanadaSelections[flavor] || 0}
+                    </span>
+                    <button
+                      className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 active:scale-95 transition-all shadow-md"
+                      onClick={() => {
+                        const current = empanadaSelections[flavor] || 0;
+                        if (!empanadaTargetQty.isFixed || totalEmpanadasSelected < empanadaTargetQty.qty) {
+                          setEmpanadaSelections({ ...empanadaSelections, [flavor]: current + 1 });
+                        } else {
+                          toast.error(`Ya seleccionaste las ${empanadaTargetQty.qty} empanadas`);
+                        }
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t">
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => setShowEmpanadaSelector(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                fullWidth
+                disabled={empanadaTargetQty.isFixed ? totalEmpanadasSelected !== empanadaTargetQty.qty : totalEmpanadasSelected === 0}
+                onClick={handleConfirmEmpanadas}
+              >
+                Confirmar ({totalEmpanadasSelected})
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================
           MODAL: Crear Cliente Rápido

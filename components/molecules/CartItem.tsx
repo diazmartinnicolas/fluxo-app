@@ -11,6 +11,7 @@ interface CartItemProps {
     price: number;
     quantity: number;
     subtotalPrice: number;
+    description?: string;
     onIncrease: () => void;
     onDecrease: () => void;
     onRemove: () => void;
@@ -25,6 +26,7 @@ export const CartItem: React.FC<CartItemProps> = ({
     price,
     quantity,
     subtotalPrice,
+    description,
     onIncrease,
     onDecrease,
     onRemove,
@@ -44,7 +46,12 @@ export const CartItem: React.FC<CartItemProps> = ({
                 <p className="font-medium text-sm text-gray-800 truncate">
                     {name}
                 </p>
-                <p className="text-xs text-orange-600 font-bold">
+                {description && (
+                    <p className="text-[10px] text-gray-500 italic mt-0.5 line-clamp-2">
+                        {description}
+                    </p>
+                )}
+                <p className="text-xs text-orange-600 font-bold mt-1">
                     {formatPrice(subtotalPrice)}
                 </p>
             </div>

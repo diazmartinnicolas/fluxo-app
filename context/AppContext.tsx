@@ -1,7 +1,16 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { logAction } from '../services/audit';
 import { Product, Order, Customer, Promotion, Profile } from '../types';
+import {
+  saveToStore,
+  getAllFromStore,
+  savePendingOrder,
+  getPendingOrders,
+  removePendingOrder,
+  updatePendingOrderStatus,
+  countPendingOrders
+} from '../services/offlineStorage';
 
 interface AppContextType {
   session: any;
@@ -11,11 +20,14 @@ interface AppContextType {
   orders: Order[];
   customers: Customer[];
   promotions: Promotion[];
+  isOnline: boolean;
+  pendingOrdersCount: number;
   refreshData: () => Promise<void>;
   signOut: () => Promise<void>;
   createOrder: (orderData: any, items: any[]) => Promise<any>;
   createCustomer: (customerData: any) => Promise<any>;
   toggleFavorite: (productId: string, currentStatus: boolean) => Promise<void>;
+  syncPendingOrders: () => Promise<number>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -29,6 +41,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+
+  // Estado offline
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -53,6 +69,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => subscription.unsubscribe();
   }, []);
 
+  // Monitorear estado de conexión
+  useEffect(() => {
+    const handleOnline = async () => {
+      setIsOnline(true);
+      // Intentar sincronizar pedidos pendientes cuando vuelve la conexión
+      const count = await countPendingOrders();
+      if (count > 0) {
+        console.log('[Offline] Conexión restaurada, hay', count, 'pedidos pendientes');
+      }
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Contar pedidos pendientes al iniciar
+    countPendingOrders().then(setPendingOrdersCount);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -72,6 +112,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const refreshData = async () => {
+    // Si está offline, cargar datos desde cache
+    if (!navigator.onLine) {
+      console.log('[Offline] Cargando datos desde cache...');
+      try {
+        const [cachedProducts, cachedCustomers, cachedPromotions] = await Promise.all([
+          getAllFromStore<Product>('products'),
+          getAllFromStore<Customer>('customers'),
+          getAllFromStore<Promotion>('promotions')
+        ]);
+
+        if (cachedProducts.length > 0) setProducts(cachedProducts);
+        if (cachedCustomers.length > 0) setCustomers(cachedCustomers);
+        if (cachedPromotions.length > 0) setPromotions(cachedPromotions);
+
+        console.log('[Offline] Datos cargados desde cache:', {
+          products: cachedProducts.length,
+          customers: cachedCustomers.length,
+          promotions: cachedPromotions.length
+        });
+      } catch (err) {
+        console.error('[Offline] Error cargando datos desde cache:', err);
+      }
+      return;
+    }
+
+    // Si está online, cargar desde Supabase y cachear
     try {
       const [prodRes, promoRes, clientRes, orderRes] = await Promise.all([
         supabase.from('products').select('*').is('deleted_at', null).order('name'),
@@ -80,16 +146,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         supabase.from('orders').select('*, clients(name)').order('created_at', { ascending: false }).limit(50)
       ]);
 
-      if (prodRes.data) setProducts(prodRes.data);
-      if (promoRes.data) setPromotions(promoRes.data);
-      if (clientRes.data) setCustomers(clientRes.data);
+      if (prodRes.data) {
+        setProducts(prodRes.data);
+        // Cachear para uso offline
+        saveToStore('products', prodRes.data).catch(console.error);
+      }
+      if (promoRes.data) {
+        setPromotions(promoRes.data);
+        saveToStore('promotions', promoRes.data).catch(console.error);
+      }
+      if (clientRes.data) {
+        setCustomers(clientRes.data);
+        saveToStore('customers', clientRes.data).catch(console.error);
+      }
       if (orderRes.data) setOrders(orderRes.data);
+
+      console.log('[Online] Datos cargados y cacheados');
     } catch (err) {
       console.error("Error al refrescar datos:", err);
     }
   };
 
   const createOrder = async (orderData: any, items: any[]) => {
+    // Si está offline, guardar pedido localmente
+    if (!navigator.onLine) {
+      console.log('[Offline] Guardando pedido localmente...');
+      const pendingId = await savePendingOrder(orderData, items);
+      const count = await countPendingOrders();
+      setPendingOrdersCount(count);
+      console.log('[Offline] Pedido guardado con ID:', pendingId);
+      return { id: pendingId, ticket_number: 'OFFLINE', offline: true };
+    }
+
     // 1. Obtener la compañía (prioridad al perfil, luego a lo que venga en orderData)
     const companyId = userProfile?.company_id || orderData.company_id || (userProfile as any)?.companies?.id;
 
@@ -175,6 +263,77 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await supabase.auth.signOut();
   };
 
+  // Sincronizar pedidos pendientes cuando vuelve la conexión
+  const syncPendingOrders = async (): Promise<number> => {
+    if (!navigator.onLine) {
+      console.log('[Offline] No hay conexión para sincronizar');
+      return 0;
+    }
+
+    const pendingOrders = await getPendingOrders();
+    const toSync = pendingOrders.filter(o => o.syncStatus === 'pending');
+
+    if (toSync.length === 0) return 0;
+
+    console.log(`[Offline] Sincronizando ${toSync.length} pedidos pendientes...`);
+    let synced = 0;
+
+    for (const order of toSync) {
+      try {
+        await updatePendingOrderStatus(order.id, 'syncing');
+
+        // Recrear pedido online (sin el check de offline en createOrder)
+        const companyId = userProfile?.company_id || order.orderData.company_id || (userProfile as any)?.companies?.id;
+        const localDate = new Date();
+        const today = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+
+        const { count } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('company_id', companyId)
+          .gte('created_at', `${today}T00:00:00`);
+
+        const nextTicket = (count || 0) + 1;
+
+        const { data: createdOrder, error: orderErr } = await supabase
+          .from('orders')
+          .insert([{
+            ...order.orderData,
+            ticket_number: nextTicket,
+            company_id: companyId
+          }])
+          .select()
+          .single();
+
+        if (orderErr) throw orderErr;
+
+        const orderItems = order.orderItems.map(item => ({
+          ...item,
+          order_id: createdOrder.id
+        }));
+
+        const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
+        if (itemsErr) throw itemsErr;
+
+        await logAction('VENTA', `Ticket #${createdOrder.ticket_number} (offline sync) - $${createdOrder.total}`, 'Caja');
+        await removePendingOrder(order.id);
+        synced++;
+
+        console.log(`[Offline] Pedido ${order.id} sincronizado como #${createdOrder.ticket_number}`);
+      } catch (err: any) {
+        await updatePendingOrderStatus(order.id, 'error', err.message);
+        console.error(`[Offline] Error sincronizando pedido ${order.id}:`, err);
+      }
+    }
+
+    const newCount = await countPendingOrders();
+    setPendingOrdersCount(newCount);
+
+    if (synced > 0) await refreshData();
+
+    return synced;
+  };
+
   return (
     <AppContext.Provider value={{
       session,
@@ -184,11 +343,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       orders,
       customers,
       promotions,
+      isOnline,
+      pendingOrdersCount,
       refreshData,
       signOut,
       createOrder,
       createCustomer,
-      toggleFavorite
+      toggleFavorite,
+      syncPendingOrders
     }}>
       {children}
     </AppContext.Provider>

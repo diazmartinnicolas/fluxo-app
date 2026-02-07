@@ -38,9 +38,11 @@ export function useCustomerSelector(
     // FILTRADO DE CLIENTES
     // ----------------------------------------------------------
 
-    const filteredCustomers = customers.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredCustomers = customers.filter(c => {
+        const term = searchTerm.toLowerCase();
+        return c.name.toLowerCase().includes(term) ||
+            (c.phone && c.phone.includes(searchTerm));
+    });
 
     // ----------------------------------------------------------
     // CLIENTE SELECCIONADO
