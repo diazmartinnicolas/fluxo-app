@@ -17,11 +17,18 @@ const os = require('os');
 const PORT = 3001;
 
 // ============================================================
-// CONFIGURACIÓN DE SUPABASE (lee del .env del proyecto padre)
+// CONFIGURACIÓN DE SUPABASE
+// Credenciales embebidas para que el server funcione como carpeta independiente.
+// También intenta leer del .env si existe (para desarrollo).
 // ============================================================
+
+// Credenciales por defecto (anon key - pública, misma que usa la app)
+const DEFAULT_SUPABASE_URL = 'https://nkgxmvsljknifcmlglhi.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5rZ3htdnNsamtuaWZjbWxnbGhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNTkwNDgsImV4cCI6MjA4MTgzNTA0OH0.DFgcV4UKpZSxG-r8CL3v2B6YJ-ESE4BqtL9WhHlSmXQ';
 
 function loadEnv() {
     try {
+        // Intenta leer .env del proyecto padre (para desarrollo)
         const envPath = path.join(__dirname, '..', '.env');
         const envContent = fs.readFileSync(envPath, 'utf8');
         const vars = {};
@@ -34,14 +41,13 @@ function loadEnv() {
         });
         return vars;
     } catch (err) {
-        console.warn('⚠️  No se pudo leer .env, registro en Supabase deshabilitado');
-        return {};
+        return {}; // Usa credenciales embebidas
     }
 }
 
 const env = loadEnv();
-const SUPABASE_URL = env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_URL = env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const SUPABASE_KEY = env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
 
 // ============================================================
 // AUTO-DETECTAR IP LOCAL
