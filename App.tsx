@@ -217,7 +217,7 @@ function App() {
         {/* ========================================
             SIDEBAR (Desktop)
         ======================================== */}
-        <aside className="w-64 bg-white border-r border-gray-200 flex-col justify-between hidden md:flex z-50">
+        <aside className="w-52 lg:w-64 bg-white border-r border-gray-200 flex-col justify-between hidden md:flex z-50">
           <div>
             {/* Header */}
             <div className="p-5 pb-2">

@@ -739,7 +739,7 @@ const POS: React.FC<POSProps> = ({
         )}
 
         {/* Grid de productos */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pb-24">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3 pb-24">
           {selectedCategory !== 'Promociones' && filteredProducts.map(product => (
             <ProductCard
               key={product.id}
@@ -851,7 +851,7 @@ const POS: React.FC<POSProps> = ({
       ======================================== */}
       <aside
         className={`
-          w-full md:w-96 bg-white border-l border-gray-200 
+          w-full md:w-80 lg:w-96 2xl:w-[420px] bg-white border-l border-gray-200 
           flex flex-col h-full absolute md:static inset-0
           ${mobileView === 'products' ? 'hidden md:flex' : 'flex'}
         `}

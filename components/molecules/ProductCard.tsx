@@ -47,7 +47,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             onClick={handleClick}
             className={`
         bg-white rounded-xl shadow-sm border border-gray-100 
-        p-3 hover:shadow-md cursor-pointer transition-all 
+        p-2.5 md:p-3 lg:p-4 hover:shadow-md cursor-pointer transition-all 
         active:scale-95 relative group
         ${isHalfMode && isFirstHalfSelected ? 'ring-2 ring-orange-400' : ''}
       `}
