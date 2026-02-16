@@ -934,10 +934,10 @@ const POS: React.FC<POSProps> = ({
 
         {/* Footer: Pago y Total */}
         <div className="p-2.5 lg:p-3 border-t border-gray-100 bg-gray-50 space-y-2">
-          {/* Fila 1: Tipo de pedido + Método de pago lado a lado */}
-          <div className="flex gap-2 items-start">
+          {/* Tipo de pedido */}
+          <div className="flex items-center gap-2">
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight w-10 shrink-0">Pedido</p>
             <div className="flex-1">
-              <p className="text-[9px] font-bold text-gray-400 mb-1 uppercase tracking-tight">Pedido</p>
               <OrderTypeSelector
                 selected={orderType}
                 onChange={(type) => {
@@ -951,8 +951,12 @@ const POS: React.FC<POSProps> = ({
                 }}
               />
             </div>
+          </div>
+
+          {/* Método de pago */}
+          <div className="flex items-center gap-2">
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight w-10 shrink-0">Pago</p>
             <div className="flex-1">
-              <p className="text-[9px] font-bold text-gray-400 mb-1 uppercase tracking-tight">Pago</p>
               <PaymentMethodSelector
                 selected={paymentMethod}
                 onChange={setPaymentMethod}
