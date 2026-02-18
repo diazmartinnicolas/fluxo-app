@@ -1,0 +1,162 @@
+version: "2"
+type: frontend
+tech_stack:
+  - language: TypeScript
+  - framework: React
+  - ui_library: TailwindCSS
+  - other: Supabase
+routes:
+  - path: /
+    file: App.tsx
+    auth_required: false
+    description: Main application entry. Renders Login if unauthenticated, Dashboard if authenticated.
+features:
+  - name: User Login
+    description: Authenticate user to access the system
+    files:
+      - components/Login.tsx
+      - hooks/useAuth.ts
+    entry_route: /login
+    user_interactions:
+      - Fill email input field
+      - Fill password input field
+      - Click Login button to submit
+      - See error message on invalid credentials
+    api_calls:
+      - method: POST
+        endpoint: /auth/v1/token
+    auth_required: false
+  - name: POS (Point of Sale)
+    description: Manage orders and sales
+    files:
+      - components/POS.tsx
+    entry_route: /
+    user_interactions:
+      - Click sidebar 'Ventas'
+      - Select products
+      - Process payment
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/products
+    auth_required: true
+  - name: Kitchen Display
+    description: View and manage kitchen orders
+    files:
+      - components/Kitchen.tsx
+    entry_route: /
+    user_interactions:
+      - Click sidebar 'Cocina'
+      - Mark order as ready
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/orders
+    auth_required: true
+  - name: Customers
+    description: Manage customer data
+    files:
+        - components/Customers.tsx
+    entry_route: /
+    user_interactions:
+        - Click sidebar 'Clientes'
+        - Add/Edit Customer
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/customers
+    auth_required: true
+  - name: Reservations
+    description: Manage bookings
+    files:
+        - components/Reservations.tsx
+    entry_route: /
+    user_interactions:
+        - Click sidebar 'Reservas'
+        - Create reservation
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/reservations
+    auth_required: true
+  - name: Inventory
+    description: Manage products/stock
+    files:
+        - components/Inventory.tsx
+    entry_route: /
+    user_interactions:
+        - Click sidebar 'Inventario'
+        - Update stock
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/inventory
+    auth_required: true
+  - name: History
+    description: Order history
+    files:
+        - components/History.tsx
+    entry_route: /
+    user_interactions:
+        - Click sidebar 'Historial'
+        - View past orders
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/history
+    auth_required: true
+  - name: Reports
+    description: Sales reports
+    files:
+        - components/Reports.tsx
+    entry_route: /
+    user_interactions:
+        - Click sidebar 'Reportes'
+        - See charts
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/analytics
+    auth_required: true
+  - name: Users
+    description: Manage staff/users
+    files:
+        - components/Users.tsx
+    entry_route: /
+    user_interactions:
+        - Click sidebar 'Usuarios'
+        - Add/Delete user
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/users
+    auth_required: true
+  - name: Cash Register
+    description: Manage cash flow
+    files:
+        - components/CashRegister.tsx
+    entry_route: /
+    user_interactions:
+        - Click sidebar 'Caja'
+        - Open/Close register
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/cash_registers
+    auth_required: true
+  - name: Table Layout
+    description: Visual table management
+    files:
+        - components/TableLayout.tsx
+    entry_route: /
+    user_interactions:
+        - Click sidebar 'Salón'
+        - Select table
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/tables
+    auth_required: true
+  - name: Promotions
+    description: Manage discounts/promos
+    files:
+        - components/Promotions.tsx
+    entry_route: /
+    user_interactions:
+        - Click sidebar 'Promociones'
+        - Create promotion
+    api_calls:
+        - method: GET
+          endpoint: /rest/v1/promotions
+    auth_required: true
+known_limitations: []

@@ -1,0 +1,3158 @@
+[
+  {
+    "id": "TC001",
+    "title": "Login with valid credentials reaches dashboard",
+    "description": "Verifies a staff user can log in with correct credentials and reach the authenticated dashboard view.",
+    "category": "User Login",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Login\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Dashboard\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Invalid credentials show error and remain on login",
+    "description": "Verifies invalid login attempts display an error message and do not navigate away from the login page.",
+    "category": "User Login",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"invalid.user@example.com\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"WrongPassword123!\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Invalid credentials\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Wrong password for a valid-looking user shows invalid credentials error",
+    "description": "Verifies entering a plausible account email with an incorrect password shows an invalid credentials error and stays on login.",
+    "category": "User Login",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"NotTheRightPassword!\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Invalid credentials\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Empty email prevents successful login and shows required validation",
+    "description": "Verifies the login form does not submit successfully when the email field is left empty.",
+    "category": "User Login",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Click the email field"
+      },
+      {
+        "type": "action",
+        "description": "Press Tab"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Email is required\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Empty password prevents successful login and shows required validation",
+    "description": "Verifies the login form does not submit successfully when the password field is left empty.",
+    "category": "User Login",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Click the password field"
+      },
+      {
+        "type": "action",
+        "description": "Press Tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Password is required\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Invalid email format shows validation and blocks login",
+    "description": "Verifies an improperly formatted email triggers a visible validation message and does not proceed to the dashboard.",
+    "category": "User Login",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"not-an-email\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"SomePassword123!\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Enter a valid email\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Login submission via Enter key works with valid credentials",
+    "description": "Verifies submitting the login form using the Enter key logs the user in successfully.",
+    "category": "User Login",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Dashboard\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Password field masks input characters on login form",
+    "description": "Verifies the password input is visually masked to protect sensitive entry.",
+    "category": "User Login",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Click the password field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"SecretPass123!\" into the password field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Password input masked\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Complete a POS checkout with customer selection and cash payment",
+    "description": "Verifies a user can add a product to the cart, proceed to checkout, select a customer, pay successfully, and see a success receipt state.",
+    "category": "POS (Point of Sale)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Ventas\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Ventas\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible product in the product list"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Attempt checkout with empty cart is blocked",
+    "description": "Verifies the POS prevents proceeding to checkout when no items are in the cart.",
+    "category": "POS (Point of Sale)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Ventas\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Checkout\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Cart is empty\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Selecting products loads and allows adding multiple items to the cart",
+    "description": "Verifies the product list is visible and adding more than one item results in a visible cart with multiple line items or updated quantity.",
+    "category": "POS (Point of Sale)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Ventas\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible product in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Click on the second visible product in the product list"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Customer selection step is required before confirming payment (when customer selector is present)",
+    "description": "Verifies the checkout flow enforces selecting a customer before payment confirmation when the UI includes a customer selector.",
+    "category": "POS (Point of Sale)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Ventas\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible product in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Checkout\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Cancel out of checkout returns to cart without completing payment",
+    "description": "Verifies a user can exit/cancel the checkout screen and is returned to the cart with items preserved.",
+    "category": "POS (Point of Sale)",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Ventas\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible product in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Checkout\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Payment success shows a visible success message/receipt state",
+    "description": "Verifies that after confirming payment, the UI displays a visible success indicator such as a receipt, order number, or confirmation message.",
+    "category": "POS (Point of Sale)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Ventas\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible product in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Checkout\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "View kitchen orders list from Cocina",
+    "description": "Verifies an authenticated user can open Cocina and see a visible list of incoming orders.",
+    "category": "Kitchen Display",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username or email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" or \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Cocina\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Cocina\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an order card in the incoming orders list is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Open an order card to view order details",
+    "description": "Verifies an authenticated user can open an order card from Cocina and see order details.",
+    "category": "Kitchen Display",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username or email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" or \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Cocina\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an order card in the incoming orders list is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible order card"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Order details\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Mark an order as Ready and verify status update",
+    "description": "Verifies the kitchen user can mark an order as ready and see the status updated to Ready on the UI.",
+    "category": "Kitchen Display",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username or email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" or \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Cocina\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible order card"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Mark order as ready\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Ready\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Mark order as Ready from within the order card view",
+    "description": "Verifies the Ready action is available after opening an order card and updates the order status on the card.",
+    "category": "Kitchen Display",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username or email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" or \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Cocina\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible order card"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Mark order as ready\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Mark order as ready\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Disconnected indicator blocks marking order Ready and shows connection error",
+    "description": "Verifies that when the realtime disconnected indicator is shown, attempting to mark an order ready displays a connection error message.",
+    "category": "Kitchen Display",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username or email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" or \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Cocina\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Disconnected\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Mark order as ready\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Connection error\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Retry connection from disconnected state and verify indicator clears",
+    "description": "Verifies the user can retry the realtime connection and the disconnected indicator is no longer shown after recovery.",
+    "category": "Kitchen Display",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username or email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" or \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Cocina\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Disconnected\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Retry connection\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Disconnected\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Realtime disconnected state shows visible banner/indicator in Cocina",
+    "description": "Verifies the Cocina screen clearly shows a realtime disconnected indicator when the connection is lost.",
+    "category": "Kitchen Display",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username or email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" or \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Cocina\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Realtime connection status indicator\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Disconnected\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "After marking Ready, order appears with updated status in the orders list",
+    "description": "Verifies that after an order is marked Ready, the orders list reflects the Ready status for that order card.",
+    "category": "Kitchen Display",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username or email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" or \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Cocina\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible order card"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Mark order as ready\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the same order card shows status text \"Ready\" in the orders list"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Create a new customer successfully and see it in the list",
+    "description": "Verifies a user can add a customer from the Customers screen and the new record appears in the customers list.",
+    "category": "Customers",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Clientes\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Clientes\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Add Customer\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Save a new customer after completing required fields",
+    "description": "Verifies the Add Customer form can be completed and saved without errors.",
+    "category": "Customers",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Clientes\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add Customer\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Add Customer\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "Validation: required fields blank shows error and stays on form",
+    "description": "Verifies required field validation prevents saving a customer when mandatory fields are empty.",
+    "category": "Customers",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Clientes\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add Customer\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Save\""
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "Validation message is visible after failed save",
+    "description": "Verifies a visible validation error is shown after attempting to save with missing required fields.",
+    "category": "Customers",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Clientes\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add Customer\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Required\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Cancel/close customer creation returns to customers list",
+    "description": "Verifies the user can exit the Add Customer flow without saving and return to the customers list screen.",
+    "category": "Customers",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Clientes\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add Customer\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Cancel\""
+      }
+    ]
+  },
+  {
+    "id": "TC028",
+    "title": "Customers list loads and is viewable",
+    "description": "Verifies the customers list screen renders and shows a visible list/table area for customer records.",
+    "category": "Customers",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Clientes\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Customers list\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Add Customer\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC029",
+    "title": "Create a reservation and confirm it appears in the agenda",
+    "description": "Verifies a user can create a new reservation from the Reservations section and see it listed in the agenda.",
+    "category": "Reservations",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Reservas\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create reservation\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Create reservation\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC030",
+    "title": "Save a reservation with valid details",
+    "description": "Verifies the reservation form accepts valid inputs and successfully saves.",
+    "category": "Reservations",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Reservas\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create reservation\""
+      },
+      {
+        "type": "action",
+        "description": "Fill \"John Test\" into the customer name field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC031",
+    "title": "Attempt to create reservation with overlapping/invalid time shows validation error",
+    "description": "Verifies the system blocks saving when the time is invalid or overlaps, and shows a visible validation error.",
+    "category": "Reservations",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Reservas\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create reservation\""
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Invalid Time Booking\" into the customer name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"00:00\" into the reservation time field"
+      }
+    ]
+  },
+  {
+    "id": "TC032",
+    "title": "Saving with invalid/overlapping time keeps user on form and displays error",
+    "description": "Verifies clicking Save with invalid/overlapping time does not create the reservation and keeps the user on the form with an error message visible.",
+    "category": "Reservations",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Reservas\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create reservation\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"validation\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC033",
+    "title": "Reservation list/agenda loads successfully in Reservations section",
+    "description": "Verifies the Reservations agenda screen loads and shows reservation content area after navigating from the sidebar.",
+    "category": "Reservations",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Reservas\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Reservas\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"agenda\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Create reservation\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC034",
+    "title": "Update inventory stock for an existing product and verify updated value is shown",
+    "description": "Verifies a user can open Inventory, update a product stock quantity, save, and see the updated stock level reflected in the UI.",
+    "category": "Inventory",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Inventario\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Inventario\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Product list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC035",
+    "title": "Select a product from the inventory list and open its stock editor",
+    "description": "Verifies a user can select a product in Inventory and reach the stock editing area for that product.",
+    "category": "Inventory",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Inventario\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first product in the product list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Stock quantity\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC036",
+    "title": "Save a positive stock quantity change and confirm the new value is displayed",
+    "description": "Verifies that saving a valid (non-negative) stock quantity updates the visible stock level for the selected product.",
+    "category": "Inventory",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Inventario\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first product in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"25\" into the \"Stock quantity\" field"
+      }
+    ]
+  },
+  {
+    "id": "TC037",
+    "title": "Save valid stock update and verify confirmation or updated stock level on screen",
+    "description": "Verifies that after clicking Save, the UI shows a successful outcome (updated stock level visible or a success message).",
+    "category": "Inventory",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Inventario\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first product in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"25\" into the \"Stock quantity\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC038",
+    "title": "Verify updated stock value is visible after saving (end-to-end)",
+    "description": "Verifies the updated stock level is displayed after saving a valid change, indicating the UI reflects the new quantity.",
+    "category": "Inventory",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Inventario\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first product in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"25\" into the \"Stock quantity\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"25\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC039",
+    "title": "Reject negative stock value and show validation error",
+    "description": "Verifies entering a negative stock quantity prevents saving and shows a validation error message.",
+    "category": "Inventory",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Inventario\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first product in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"-5\" into the \"Stock quantity\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC040",
+    "title": "Negative stock value does not change displayed stock level after failed save",
+    "description": "Verifies that after a negative value validation error, the stock level shown remains unchanged on screen.",
+    "category": "Inventory",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Inventario\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first product in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"-5\" into the \"Stock quantity\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"must be\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC041",
+    "title": "Inventory list loads and is usable after initial fetch",
+    "description": "Verifies Inventory page loads without empty-state errors and presents at least one selectable product entry.",
+    "category": "Inventory",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Inventario\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Product list\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first product in the product list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Stock quantity\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC042",
+    "title": "Open History from sidebar and view past orders list",
+    "description": "Verifies an authenticated user can access Historial and see a visible list of past orders.",
+    "category": "History",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Historial\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Historial\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Past orders list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC043",
+    "title": "Filter History by a specific date and see filtered orders",
+    "description": "Verifies applying a date filter reduces the visible orders to match the selected date.",
+    "category": "History",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Historial\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Past orders list\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Date\" filter field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Today\" from the date filter options"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Past orders list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC044",
+    "title": "Date range filter that returns no results shows empty state",
+    "description": "Verifies the History page shows an empty state message when filters yield no orders.",
+    "category": "History",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Historial\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start date\" field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"10 years ago\" from the date picker"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"End date\" field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"9 years ago\" from the date picker"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"No results\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Past orders list\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC045",
+    "title": "Adjust filters after empty state to recover results",
+    "description": "Verifies the user can change filters after an empty result and see orders appear again.",
+    "category": "History",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Historial\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start date\" field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"10 years ago\" from the date picker"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"End date\" field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"9 years ago\" from the date picker"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"No results\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start date\" field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"30 days ago\" from the date picker"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"End date\" field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Today\" from the date picker"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Past orders list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC046",
+    "title": "Invalid date range (end date before start date) is blocked or shows validation",
+    "description": "Verifies the UI prevents or clearly communicates an invalid date range selection.",
+    "category": "History",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Historial\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start date\" field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Today\" from the date picker"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"End date\" field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Yesterday\" from the date picker"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Invalid date range\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC047",
+    "title": "History list remains accessible after applying and clearing date filters",
+    "description": "Verifies the user can clear the applied date filters and return to the unfiltered list.",
+    "category": "History",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Historial\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Past orders list\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Date\" filter field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Today\" from the date filter options"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Clear filters\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Past orders list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC048",
+    "title": "Open Reports and view KPIs and charts",
+    "description": "Verifies an authenticated user can open the Reports page and see KPI tiles and charts.",
+    "category": "Reports",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Reportes\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Reportes\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"charts\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC049",
+    "title": "Adjust timeframe and confirm charts update",
+    "description": "Verifies changing the timeframe control updates the visible report output.",
+    "category": "Reports",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Reportes\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"charts\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the timeframe selector control"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Últimos 7 días\" from the timeframe dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Últimos 7 días\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC050",
+    "title": "Reports shows loading state while fetching analytics",
+    "description": "Verifies a loading spinner/indicator is shown when opening Reports before data renders.",
+    "category": "Reports",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Reportes\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"loading spinner\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"charts\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC051",
+    "title": "Timeframe control is available on Reports page",
+    "description": "Verifies the Reports page exposes a timeframe filter/control for analytics.",
+    "category": "Reports",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Reportes\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"timeframe selector\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the timeframe selector control"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"timeframe dropdown\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC052",
+    "title": "Create a new user with a valid role and see it in the users list",
+    "description": "Verifies an admin can add a staff user with a valid role and the new user appears in the list.",
+    "category": "Users",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Usuarios\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Usuarios\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Add User\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC053",
+    "title": "Open Add User form from Users list",
+    "description": "Verifies the Add User action opens a user creation form for entering user details and role.",
+    "category": "Users",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Usuarios\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add User\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Add User\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC054",
+    "title": "Save a new user and verify the new row is visible in the list",
+    "description": "Verifies saving a new user with valid required details shows the user in the users list afterwards.",
+    "category": "Users",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Usuarios\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add User\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"autouser+e2e1@example.com\" into the email field"
+      }
+    ]
+  },
+  {
+    "id": "TC055",
+    "title": "Assign role when creating a new user",
+    "description": "Verifies the role can be selected during user creation and the chosen role is visible for the created user.",
+    "category": "Users",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Usuarios\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add User\" button"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Waiter\" from the role dropdown"
+      }
+    ]
+  },
+  {
+    "id": "TC056",
+    "title": "Attempt to create a user with an invalid email and see a validation message",
+    "description": "Verifies the UI blocks saving when the email is invalid and shows a visible validation/error message.",
+    "category": "Users",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Usuarios\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add User\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"not-an-email\" into the email field"
+      }
+    ]
+  },
+  {
+    "id": "TC057",
+    "title": "Attempt to create a user with a duplicate email and see an error message",
+    "description": "Verifies saving a user with an email that already exists shows a visible duplicate/constraint error.",
+    "category": "Users",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Usuarios\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add User\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"existing.user@example.com\" into the email field"
+      }
+    ]
+  },
+  {
+    "id": "TC058",
+    "title": "Verify Users list loads and is visible after navigating via sidebar",
+    "description": "Verifies the users list view is reachable from the sidebar and displays a list/table area for users.",
+    "category": "Users",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Usuarios\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Users list\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Add User\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC059",
+    "title": "Open cash register with a valid opening amount",
+    "description": "Verifies a user can open the cash register and see the status change to Open.",
+    "category": "Cash Register",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Caja\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Open register\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"100\" into the opening amount field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Confirm\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Open\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC060",
+    "title": "Prevent opening register when opening amount is empty",
+    "description": "Verifies the opening action is blocked and a validation message is shown when no opening amount is provided.",
+    "category": "Cash Register",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Caja\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Open register\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Confirm\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"opening amount\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC061",
+    "title": "Prevent opening register when opening amount is non-numeric",
+    "description": "Verifies the opening action is blocked and a validation message is shown for an invalid opening amount format.",
+    "category": "Cash Register",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Caja\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Open register\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"abc\" into the opening amount field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Confirm\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"invalid\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC062",
+    "title": "Cancel opening register and remain not-opened",
+    "description": "Verifies a user can back out of opening the register and the register does not become Open.",
+    "category": "Cash Register",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Caja\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Open register\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Cancel\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Open register\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC063",
+    "title": "Attempt to close register with pending transactions shows warning and blocks closing",
+    "description": "Verifies closing is prevented when pending transactions exist and a warning is displayed.",
+    "category": "Cash Register",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Caja\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Close register\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"pending transactions\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"prevent\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC064",
+    "title": "Dismiss pending-transactions warning when trying to close register",
+    "description": "Verifies the user can dismiss the warning dialog and remains on the cash register screen without closing.",
+    "category": "Cash Register",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Caja\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Close register\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"pending transactions\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Cancel\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Close register\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC065",
+    "title": "Open a free table from the map",
+    "description": "Verifies that selecting a free table allows opening it for seating.",
+    "category": "Table Layout",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Salón\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"table map\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on a free table in the table map"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Open table\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC066",
+    "title": "Add an order to an opened table",
+    "description": "Verifies that once a table is opened, the user can add at least one item to the table order.",
+    "category": "Table Layout",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Salón\""
+      },
+      {
+        "type": "action",
+        "description": "Click on a free table in the table map"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Open table\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Order\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC067",
+    "title": "Table map loads and displays tables list after entering Salón",
+    "description": "Verifies that the floor map renders and shows tables after navigating to the Salón section.",
+    "category": "Table Layout",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Salón\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"table map\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Mesa\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"free table\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC068",
+    "title": "Selecting a table highlights it and shows table details",
+    "description": "Verifies that clicking a table on the map selects it and shows its details/actions panel.",
+    "category": "Table Layout",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Salón\""
+      },
+      {
+        "type": "action",
+        "description": "Click on any table in the table map"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Table\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC069",
+    "title": "Create a percentage promotion and verify it appears in the list",
+    "description": "Verifies a user can create a new percentage-based promotion, save it, and see it listed in Promotions.",
+    "category": "Promotions",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Promociones\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create promotion\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Create promotion\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC070",
+    "title": "Save a 2x1 promotion and verify it appears in the list",
+    "description": "Verifies a user can create a 2x1-style promotion with a validity period and see it listed after saving.",
+    "category": "Promotions",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Promociones\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create promotion\""
+      },
+      {
+        "type": "action",
+        "description": "Select \"2x1\" from the promotion type dropdown"
+      }
+    ]
+  },
+  {
+    "id": "TC071",
+    "title": "Attempt to save overlapping promotion rules and verify conflict warning blocks save",
+    "description": "Verifies overlapping/duplicate promotion rules trigger a visible conflict validation and prevent saving.",
+    "category": "Promotions",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Promociones\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create promotion\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Save\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC072",
+    "title": "Cancel promotion creation without saving and verify user returns to Promotions list",
+    "description": "Verifies the user can exit the create promotion screen without saving and remains on the Promotions area.",
+    "category": "Promotions",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Promociones\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create promotion\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Cancel\""
+      }
+    ]
+  },
+  {
+    "id": "TC073",
+    "title": "Verify Promotions list loads and shows existing promotions state",
+    "description": "Verifies the Promotions page loads successfully and shows either existing promotions or an empty-state message.",
+    "category": "Promotions",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Promociones\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Promociones\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Promotions list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC074",
+    "title": "Required-field validation: attempt to save with missing details and verify inline errors",
+    "description": "Verifies the create promotion form prevents saving when required fields are missing and shows visible validation messages.",
+    "category": "Promotions",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Promociones\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create promotion\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Save\""
+      }
+    ]
+  },
+  {
+    "id": "TC075",
+    "title": "Create a percent promotion with validity dates and verify dates are shown in list row/details",
+    "description": "Verifies saving a promotion with a validity window results in visible date/range information in the Promotions UI.",
+    "category": "Promotions",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Promociones\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create promotion\""
+      },
+      {
+        "type": "action",
+        "description": "Select \"Percent\" from the promotion type dropdown"
+      }
+    ]
+  },
+  {
+    "id": "TC076",
+    "title": "Conflict handling: overlapping validity period triggers visible warning message",
+    "description": "Verifies defining overlapping validity (time/date range) causes a visible conflict warning on save attempt.",
+    "category": "Promotions",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the username/email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click sidebar \"Promociones\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create promotion\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Save\""
+      }
+    ]
+  }
+]

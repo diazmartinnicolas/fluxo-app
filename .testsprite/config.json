@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "mauro@pepperino.com",
+  "loginPassword": "Mauro123456!",
+  "executionArgs": {
+    "projectName": "Fluxo",
+    "projectPath": "c:\\Users\\RTECH\\Desktop\\FluxoApp\\Fluxo",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-mlKdl7W14MfxXpFF_letULp_luZrBIkNSMMlBcZHmh8SYbpqLkUbHUrx_yCUJPpRUjRMh6v2pkxl8PJwyUS_n1U48D08EKIrW92aFKfhYDx8Hogf6i9ApsMdau-kB-d57No"
+    }
+  },
+  "serverPort": 50836,
+  "proxy": "http://8c9610b5-bcbc-4bc8-8a82-ce90a8e82d32:YgfPKCnoQIpyUjb1cfGw7gosLtmswm25@tun.testsprite.com:8080"
+}
