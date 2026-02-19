@@ -34,3 +34,5 @@ Analytics/*.csv
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+print-server/*.exe

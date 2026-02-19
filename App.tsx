@@ -218,7 +218,7 @@ function App() {
             SIDEBAR (Desktop)
         ======================================== */}
         <aside className="w-52 lg:w-64 bg-white border-r border-gray-200 flex-col justify-between hidden md:flex z-50">
-          <div>
+          <div className="flex-1 overflow-y-auto">
             {/* Header */}
             <div className="p-5 pb-2">
               <div className="flex items-center gap-3 mb-5">

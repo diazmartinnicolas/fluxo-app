@@ -47,76 +47,10 @@ interface TableTicketProps {
     companyName?: string;
 }
 
-const TableTicket = forwardRef<HTMLDivElement, TableTicketProps>(({ order, table, companyName }, ref) => {
-    if (!order || !table) return null;
 
-    return (
-        <div ref={ref} className="hidden print:block p-1 bg-white text-black font-mono text-[10px] w-[58mm] mx-auto leading-tight">
-            {/* HEADER */}
-            <div className="text-center mb-4 border-b border-black pb-2 border-dashed">
-                <h2 className="font-black text-lg uppercase leading-none mb-1">
-                    {companyName || 'Mi Negocio'}
-                </h2>
-                <p className="text-[10px]">
-                    {new Date().toLocaleDateString('es-AR')} - {new Date().toLocaleTimeString('es-AR')}
-                </p>
-            </div>
+// Importar el componente unificado
+import { Ticket } from './ui/Ticket';
 
-            {/* MESA */}
-            <div className="text-center font-black text-base border-2 border-black py-1 mb-2">
-                {table.name}
-            </div>
-
-            {/* TICKET NUMBER */}
-            <div className="flex justify-between items-center font-bold text-base mb-2 border-b border-dashed border-black pb-2">
-                <span>TICKET:</span>
-                <span>#{order.ticket_number || 'N/A'}</span>
-            </div>
-
-            {/* CONSUMO */}
-            <div className="border-b border-black border-dashed py-2 mb-3">
-                <p className="font-bold text-xs mb-2 uppercase">Consumo:</p>
-                <ul className="space-y-2">
-                    {order.order_items?.map((item: any, index: number) => {
-                        const displayName = item.item_name || item.products?.name || 'Producto';
-                        const precio = item.quantity * (item.price_at_moment || item.unit_price || item.products?.price || 0);
-                        return (
-                            <li key={index} className="flex justify-between items-start gap-2">
-                                <div className="flex-1 min-w-0">
-                                    <span className="text-sm font-medium uppercase block">
-                                        {item.quantity} x {displayName}
-                                    </span>
-                                    {item.notes && (
-                                        <span className="text-[10px] text-gray-600 italic leading-tight block">
-                                            ({item.notes})
-                                        </span>
-                                    )}
-                                </div>
-                                <span className="font-bold text-sm">
-                                    ${precio.toLocaleString('es-AR')}
-                                </span>
-                            </li>
-                        );
-                    })}
-                </ul>
-            </div>
-
-            {/* TOTAL */}
-            <div className="border-t-2 border-black pt-2 mb-3">
-                <div className="flex justify-between items-center font-black text-lg">
-                    <span>TOTAL</span>
-                    <span>${order.total?.toLocaleString('es-AR') || 0}</span>
-                </div>
-            </div>
-
-            {/* FOOTER */}
-            <div className="text-center text-xs font-bold mt-3 pt-2 border-t border-dashed border-black">
-                <p>¡Gracias por su visita!</p>
-                <p className="mt-1">*** TICKET NO FISCAL ***</p>
-            </div>
-        </div>
-    );
-});
 
 // ============================================================
 // COMPONENTE PRINCIPAL
@@ -469,9 +403,10 @@ export default function TableLayout({ onAddProducts }: TableLayoutProps) {
 
     return (
         <>
+
             {/* Componente de ticket oculto para impresión */}
             {selectedTable && tableOrder && (
-                <TableTicket
+                <Ticket
                     ref={ticketRef}
                     order={tableOrder}
                     table={selectedTable}

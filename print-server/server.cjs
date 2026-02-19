@@ -14,7 +14,43 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+
 const PORT = 3001;
+
+// ============================================================
+// AUTO-INSTALLER (Self-Copy to Startup)
+// ============================================================
+if (process.argv.includes('--install')) {
+    const startupPath = path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+    const targetExe = path.join(startupPath, 'FluxoPrintServer.exe');
+    const sourceExe = process.execPath; // The currently running .exe (from pkg)
+
+    console.log('📦 Instalando en Inicio de Windows...');
+    console.log(`   Origen: ${sourceExe}`);
+    console.log(`   Destino: ${targetExe}`);
+
+    try {
+        // 1. Copiar ejecutable
+        fs.copyFileSync(sourceExe, targetExe);
+
+        console.log('✅ Instalación completada.');
+        console.log('🚀 Iniciando servidor...');
+
+        // 2. Ejecutar el nuevo archivo
+        const child = require('child_process').spawn(targetExe, [], {
+            detached: true,
+            stdio: 'ignore'
+        });
+        child.unref();
+
+        process.exit(0);
+    } catch (err) {
+        console.error('❌ Error instalando:', err.message);
+        console.log('Presione cualquier tecla para salir...');
+        proc = require('child_process').spawn('cmd', ['/c', 'pause'], { stdio: 'inherit' });
+        process.exit(1);
+    }
+}
 
 // ============================================================
 // CONFIGURACIÓN DE SUPABASE
@@ -143,8 +179,13 @@ function fetchSupabase(url, method, body, extraHeaders = {}) {
 // TICKET GENERATOR (58mm - Gadnic IT1050)
 // ============================================================
 
-function generateTicket(order) {
-    const W = 28;
+
+// ============================================================
+// TICKET GENERATOR (Multi-format)
+// ============================================================
+
+function generateTicketContent(order, width) {
+    const W = width;
     const lines = [];
 
     const center = (t) => {
@@ -196,7 +237,7 @@ function generateTicket(order) {
 
     // Cliente / Dirección
     lines.push('CLIENTE / DIRECCION:');
-    lines.push((order.client?.name || 'Mostrador').toUpperCase());
+    lines.push((order.client?.name || order.clients?.name || 'Mostrador').toUpperCase());
 
     const direccion = order.delivery_address || order.client?.address;
     if (direccion) {
@@ -214,7 +255,7 @@ function generateTicket(order) {
     lines.push('');
     (order.order_items || []).forEach(item => {
         const qty = item.quantity || 1;
-        const name = (item.item_name || item.product?.name || 'Item').toUpperCase();
+        const name = (item.item_name || item.product?.name || item.products?.name || 'Item').toUpperCase();
 
         lines.push(`${qty} x ${name}`);
 
@@ -254,24 +295,75 @@ function generateTicket(order) {
 // IMPRESIÓN (PowerShell directo a impresora predeterminada)
 // ============================================================
 
+
 function printTicket(order, callback) {
     try {
-        const content = generateTicket(order);
-        const tempFile = path.join(__dirname, 'ticket.txt');
+        const narrowContent = generateTicketContent(order, 32); // 58mm
+        const wideContent = generateTicketContent(order, 48);   // 80mm
 
-        fs.writeFileSync(tempFile, content, 'utf8');
+        const tempFileNarrow = path.join(__dirname, 'ticket_narrow.txt');
+        const tempFileWide = path.join(__dirname, 'ticket_wide.txt');
 
-        const psCommand = `powershell -NoProfile -Command "$content = Get-Content -Path '${tempFile}' -Raw; $p = New-Object System.Drawing.Printing.PrintDocument; $p.DocumentName = 'Ticket Fluxo #${order.ticket_number}'; $p.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0); $p.add_PrintPage({ $_.Graphics.DrawString($content, (New-Object System.Drawing.Font('Consolas', 9)), [System.Drawing.Brushes]::Black, 0, 0) }); $p.Print()"`;
+        fs.writeFileSync(tempFileNarrow, narrowContent, 'utf8');
+        fs.writeFileSync(tempFileWide, wideContent, 'utf8');
+
+        // PowerShell Logic:
+        // 1. Obtener impresora default
+        // 2. Chequear ancho de papel (PaperSizesSupported o DefaultPageSettings)
+        // 3. Si width > 280 (aprox 72mm), usar Wide, sino Narrow
+        // 4. Imprimir
+
+        const psCommand = `powershell -NoProfile -Command "
+            $p = New-Object System.Drawing.Printing.PrintDocument;
+            $printer = Get-CimInstance Win32_Printer | Where-Object { $_.Default -eq $true };
+            
+            if ($printer) {
+                $p.PrinterSettings.PrinterName = $printer.Name;
+            }
+
+            try {
+                $width = $p.DefaultPageSettings.PaperSize.Width;
+            } catch {
+                $width = 220; # Fallback 58mm
+            }
+
+            if ($width -ge 280) {
+                # 80mm Mode
+                $content = Get-Content -Path '${tempFileWide}' -Raw;
+                $font = New-Object System.Drawing.Font('Consolas', 10);
+            } else {
+                # 58mm Mode
+                $content = Get-Content -Path '${tempFileNarrow}' -Raw;
+                $font = New-Object System.Drawing.Font('Consolas', 9);
+            }
+
+            $p.DocumentName = 'Ticket Fluxo #${order.ticket_number}';
+            
+            # Margen cero
+            $p.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0);
+            
+            $p.add_PrintPage({ 
+                $_.Graphics.DrawString($content, $font, [System.Drawing.Brushes]::Black, 0, 0) 
+            });
+            
+            $p.Print();
+        "`;
 
         exec(psCommand, (error) => {
-            setTimeout(() => { if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile); }, 2000);
+            // Limpieza
+            setTimeout(() => {
+                if (fs.existsSync(tempFileNarrow)) fs.unlinkSync(tempFileNarrow);
+                if (fs.existsSync(tempFileWide)) fs.unlinkSync(tempFileWide);
+            }, 5000);
 
             if (error) {
                 console.error('Error PowerShell:', error.message);
-                exec(`notepad /p "${tempFile}"`, () => { });
+                // Fallback a notepad con Narrow
+                exec(`notepad /p "${tempFileNarrow}"`, () => { });
+            } else {
+                console.log('🖨️  Ticket #' + order.ticket_number + ' enviado (Auto-Width)');
             }
 
-            console.log('🖨️  Ticket #' + order.ticket_number + ' enviado');
             callback(null);
         });
     } catch (err) {
@@ -348,8 +440,8 @@ server.listen(PORT, '0.0.0.0', async () => {
 
     console.log('');
     console.log('╔══════════════════════════════════════════╗');
-    console.log('║       FLUXO PRINT SERVER v7              ║');
-    console.log('║       Gadnic IT1050 (58mm)               ║');
+    console.log('║       FLUXO PRINT SERVER v8 (Auto-Width) ║');
+    console.log('║       58mm / 80mm Zero-Config            ║');
     console.log('╠══════════════════════════════════════════╣');
     console.log('║  Estado: ✅ LISTO                        ║');
     console.log('║                                          ║');
