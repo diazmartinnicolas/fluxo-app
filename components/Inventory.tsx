@@ -217,32 +217,186 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(text, 'text/html');
 
-      const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
-      const texts: string[] = [];
+      const extractedItems: { title: string, desc: string, prices: number[], originalText: string, category: string }[] = [];
+      let currentCategory = "General";
+
+      const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT, null);
       let node;
-      while (node = walker.nextNode()) {
-        const val = node.nodeValue?.trim();
-        if (val && val.length > 0) texts.push(val);
+      while ((node = walker.nextNode() as Element)) {
+        if (node.tagName.startsWith('H') || node.classList.contains('section-title') || node.classList.contains('empanadas-title')) {
+          currentCategory = node.textContent?.trim().toLowerCase() || currentCategory;
+          continue;
+        }
+
+        if (node.classList.contains('menu-item') || node.classList.contains('item-row')) {
+          const nameEl = node.querySelector('.item-name');
+          if (!nameEl) continue;
+
+          const name = nameEl.textContent?.trim() || "";
+          let desc = "";
+          const descEl = node.closest('.menu-item')?.querySelector('.item-desc') || node.querySelector('.item-desc');
+          if (descEl) desc = descEl.textContent?.trim() || "";
+
+          const prices: number[] = [];
+          const priceContainer = node.querySelector('.item-prices');
+          if (priceContainer) {
+            const tw = document.createTreeWalker(priceContainer, NodeFilter.SHOW_TEXT, null);
+            let tn;
+            while ((tn = tw.nextNode())) {
+              const txt = tn.nodeValue || "";
+              const matches = [...txt.matchAll(/\d{1,3}(?:\.\d{3})+/g)];
+              for (const m of matches) prices.push(parseInt(m[0].replace(/\./g, ''), 10));
+            }
+          } else {
+            const txt = nameEl.parentElement?.textContent || "";
+            const m = txt.match(/\d{1,3}(?:\.\d{3})+/);
+            if (m && !name.includes(m[0])) prices.push(parseInt(m[0].replace(/\./g, ''), 10));
+          }
+
+          if (prices.length > 0) {
+            if (!extractedItems.some(i => i.title === name && i.category === currentCategory)) {
+              extractedItems.push({ title: name, desc, prices, originalText: name.toLowerCase(), category: currentCategory });
+            }
+          }
+        }
       }
+
+      // 2. Extraer empanadas separadas por comas (.empanadas-list)
+      doc.querySelectorAll('.empanadas-box').forEach(box => {
+        let cat = "empanadas";
+        const titleEl = box.querySelector('.empanadas-title') || box.querySelector('div[style*="font-weight: 700"]');
+        if (titleEl) cat = titleEl.textContent?.trim().toLowerCase() || cat;
+
+        box.querySelectorAll('.empanadas-list').forEach(listEl => {
+          let prices: number[] = [];
+          let next = listEl.nextElementSibling;
+          while (next) {
+            if (next.classList.contains('empanadas-prices')) {
+              const tw = document.createTreeWalker(next, NodeFilter.SHOW_TEXT, null);
+              let tn;
+              while ((tn = tw.nextNode())) {
+                const txt = tn.nodeValue || "";
+                const matches = [...txt.matchAll(/\d{1,3}(?:\.\d{3})+/g)];
+                for (const m of matches) prices.push(parseInt(m[0].replace(/\./g, ''), 10));
+              }
+              break;
+            }
+            next = next.nextElementSibling;
+          }
+
+          if (prices.length > 0) {
+            const items = (listEl.textContent || "").split(/[,y]/).map(s => s.trim()).filter(s => s.length > 3);
+            items.forEach(iName => {
+              extractedItems.push({ title: iName, desc: '', prices, originalText: iName.toLowerCase(), category: cat });
+            });
+          }
+        });
+      });
+
+      const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 
       const updates: { id: string, name: string, oldPrice: number, newPrice: number }[] = [];
 
       for (const product of products) {
-        // Buscamos si el nombre existe en los textos del HTML
-        const index = texts.findIndex(t => t.toLowerCase() === product.name.toLowerCase() || t.toLowerCase().includes(product.name.toLowerCase()));
-        if (index !== -1) {
-          // Empezamos a buscar DESDE el siguiente nodo (index + 1) para ignorar los números dentro del propio nombre
-          for (let i = index + 1; i < Math.min(index + 6, texts.length); i++) {
-            // Un precio en Argentina suele tener punto de miles (ej: 15.000, 1.500) o al menos 3 cifras (ej: 1500)
-            const priceMatch = texts[i].match(/(?:\$?\s*)(\d{1,3}(?:\.\d{3})+|\d{3,})/);
-            if (priceMatch) {
-              let priceStr = priceMatch[1].replace(/\./g, '');
-              let newPrice = parseInt(priceStr, 10);
-              if (newPrice > 0 && newPrice !== product.price) {
-                updates.push({ id: product.id, name: product.name, oldPrice: product.price, newPrice });
-              }
-              break; // Al encontrar el primer precio válido, saltamos al siguiente producto
+        const pDbName = normalize(product.name);
+        if (!pDbName) continue;
+
+        const pDbOrig = product.name.toLowerCase();
+        const pCat = (product.category || "").toLowerCase();
+
+        let bestMatch = null;
+        let bestScore = 0;
+
+        for (const ext of extractedItems) {
+          const eExtName = normalize(ext.title);
+          const eExtDesc = normalize(ext.desc);
+          const eCat = normalize(ext.category);
+
+          // Validar Categorías
+          let catOk = false;
+          if (pCat.includes('bebida') && (eCat.includes('bebida') || eCat.includes('cerveza') || eCat.includes('vino'))) catOk = true;
+          if (pCat.includes('pizza') && (eCat.includes('tradicionales') || eCat.includes('especiales') || eCat.includes('rellenas'))) catOk = true;
+          if (pCat.includes('empanada') && (eCat.includes('empanada') || eCat.includes('canastita') || eCat.includes('clasicas'))) catOk = true;
+          if (pCat.includes('milanesa') || pCat.includes('comida') || pCat.includes('hamburguesa') || pCat.includes('burger')) {
+            if (eCat.includes('comida') || eCat.includes('burger') || eCat.includes('panini')) catOk = true;
+          }
+          if (!catOk && eCat !== "general") continue;
+
+          let score = 0;
+
+          // Checkeo de Tokens
+          // Checkeo de Tokens
+          const pTokens = pDbOrig.replace(/[^a-záéíóúñ0-9\s]/g, "").split(/\s+/).filter(w => w.length > 3);
+          let subMatches = 0;
+          pTokens.forEach(t => { if (eExtName.includes(normalize(t))) subMatches++; });
+          score += subMatches * 15;
+
+          // Inclusión Directa
+          if (pDbName.includes(eExtName) || eExtName.includes(pDbName)) {
+            score += 50;
+            if (pDbName === eExtName) score += 100;
+          }
+
+          // Penalizaciones y Premios Estrictos de Tamaño
+          const pIsGde = pDbOrig.includes('gde') || pDbOrig.includes('grande') || pDbOrig.includes('fami');
+          const extIsGde = eExtName.includes('gde') || eExtName.includes('grande') || eExtDesc.includes('gde') || eExtDesc.includes('grande');
+
+          const pIsChica = pDbOrig.includes('indiv') || pDbOrig.includes('chica') || pDbOrig.includes('peque') || pDbOrig.includes('med');
+          const extIsChica = eExtName.includes('indiv') || eExtName.includes('chica') || eExtDesc.includes('indiv') || eExtDesc.includes('chica') || eExtName.includes('med');
+
+          // "Doble" es una variante, no un tamaño (Pizza Muzzarella vs Pizza Muzzarella Doble)
+          const pIsDoble = pDbOrig.includes('doble');
+          const extIsDoble = eExtName.includes('doble') || eExtDesc.includes('doble');
+          if (pIsDoble && extIsDoble) score += 150;
+          if (pIsDoble && !extIsDoble) score -= 150;
+          if (!pIsDoble && extIsDoble) score -= 150;
+
+          if (pIsGde && extIsGde) score += 200;
+          if (pIsGde && extIsChica) score -= 200;
+          if (pIsChica && extIsChica) score += 200;
+          if (pIsChica && extIsGde) score -= 200;
+
+          const pIs1L = pDbOrig.includes('1l') || pDbOrig.includes('1 l') || pDbOrig.includes('1 litro');
+          const extIs1L = eExtName.includes('1l') || eExtName.includes('1 l') || eExtName.includes('1 litro');
+          const pIsLata = pDbOrig.includes('lata');
+          const extIsLata = eExtName.includes('lata');
+          const pIs15 = pDbOrig.includes('1.5') || pDbOrig.includes('1,5');
+          const extIs15 = eExtName.includes('1.5') || eExtName.includes('15') || eExtName.includes('1 5');
+
+          if (pIs1L && extIs1L) score += 200;
+          if (pIs1L && !extIs1L) score -= 200;
+          if (pIsLata && extIsLata) score += 200;
+          if (pIsLata && !extIsLata) score -= 200;
+          if (pIs15 && extIs15) score += 200;
+          if (pIs15 && !extIs15) score -= 200;
+
+          if (score > 30 && score > bestScore) {
+            bestScore = score;
+            bestMatch = ext;
+          }
+        }
+
+        if (bestMatch && bestMatch.prices.length > 0) {
+          let newPrice = bestMatch.prices[0];
+
+          if (bestMatch.prices.length >= 2) {
+            if (pDbOrig.includes('gde') || pDbOrig.includes('grande') || pDbOrig.includes('fami')) {
+              newPrice = bestMatch.prices[1];
+            } else {
+              // Default para 'mediana', 'individual', o sin especificar (ej: 'Muzzarella Doble')
+              newPrice = bestMatch.prices[0];
             }
+
+            // Si la propia base de datos no especifica tamaño pero es Pizza/Empanada
+            if (bestMatch.prices.length === 3) {
+              if (pDbOrig.includes('docena') && !pDbOrig.includes('media') && !pDbOrig.includes('1/2')) newPrice = bestMatch.prices[2];
+              else if (pDbOrig.includes('media') || pDbOrig.includes('1/2')) newPrice = bestMatch.prices[1];
+              else newPrice = bestMatch.prices[0];
+            }
+          }
+
+          if (newPrice > 0 && newPrice !== product.price) {
+            updates.push({ id: product.id, name: product.name, oldPrice: product.price, newPrice });
           }
         }
       }
@@ -264,7 +418,7 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
           toast.info('Actualización cancelada');
         }
       } else {
-        toast.warning('No se encontraron productos coincidentes con precios nuevos en el archivo.');
+        toast.warning('No se encontraron productos coincidentes o todos los precios ya están actualizados.');
       }
     } catch (e: any) {
       console.error(e);

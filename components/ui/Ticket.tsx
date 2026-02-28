@@ -87,7 +87,7 @@ export const Ticket = forwardRef<HTMLDivElement, TicketProps>(({ order, companyN
                 <p className="text-sm font-black">{order.client?.name || order.clients?.name || 'Mostrador'}</p>
 
                 {order.delivery_address && (
-                    <p className="text-xs mt-0.5 font-bold leading-tight">📍 {order.delivery_address}</p>
+                    <p className="text-[15px] mt-1 font-black leading-tight">📍 {order.delivery_address}</p>
                 )}
 
                 {(order.delivery_phone || order.client?.phone) && (
@@ -105,15 +105,16 @@ export const Ticket = forwardRef<HTMLDivElement, TicketProps>(({ order, companyN
                 <ul className="space-y-2">
                     {sortedItems.map((item: any, index: number) => (
                         <li key={index} className="flex flex-col">
-                            <div className="flex gap-1 items-start">
-                                <span className="font-black text-sm">{item.quantity}</span>
-                                <span className="mx-0.5">x</span>
-                                <span className="flex-1 text-sm font-black uppercase">
+                            <div className="flex gap-2 items-start">
+                                <span className="font-black text-base border border-black bg-black text-white px-1 leading-none py-0.5 rounded-sm">
+                                    {item.quantity}
+                                </span>
+                                <span className="flex-1 text-sm font-black uppercase leading-tight pt-0.5">
                                     {item.item_name || item.product?.name || item.products?.name || 'Item'}
                                 </span>
                             </div>
                             {item.notes && (
-                                <span className="text-[10px] ml-6 italic block">
+                                <span className="text-[11px] ml-8 italic block font-bold border-l-2 border-dashed border-black pl-1 mt-0.5 leading-tight">
                                     ({item.notes})
                                 </span>
                             )}
@@ -122,7 +123,8 @@ export const Ticket = forwardRef<HTMLDivElement, TicketProps>(({ order, companyN
                 </ul>
             </div>
 
-            <div className="border-b-[1px] border-black border-double mb-2 mt-2"></div>
+            <div className="border-b border-black border-dashed mt-3 mb-1"></div>
+            <div className="border-b-[1px] border-black border-double mb-2"></div>
 
             {/* Total */}
             <div className="flex justify-between items-center py-1 font-black text-base">
