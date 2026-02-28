@@ -231,20 +231,17 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
         // Buscamos si el nombre existe en los textos del HTML
         const index = texts.findIndex(t => t.toLowerCase() === product.name.toLowerCase() || t.toLowerCase().includes(product.name.toLowerCase()));
         if (index !== -1) {
-          // Buscamos un precio en los siguientes 5 nodos de texto
-          for (let i = index; i < Math.min(index + 5, texts.length); i++) {
-            // Busca formato de precio (1500, 15.000, $ 15.000)
-            const match = texts[i].match(/\$?\s*(\d{1,3}(?:\.\d{3})*|\d+)/);
-            if (match) {
-              const isPrice = texts[i].includes('$') || (i > 0 && texts[i - 1].includes('$'));
-              if (isPrice || match[1] !== texts[i]) {
-                let priceStr = match[1].replace(/\./g, '');
-                let newPrice = parseInt(priceStr, 10);
-                if (newPrice > 0 && newPrice !== product.price) {
-                  updates.push({ id: product.id, name: product.name, oldPrice: product.price, newPrice });
-                  break; // Precio encontrado, saltamos al siguiente producto
-                }
+          // Empezamos a buscar DESDE el siguiente nodo (index + 1) para ignorar los números dentro del propio nombre
+          for (let i = index + 1; i < Math.min(index + 6, texts.length); i++) {
+            // Un precio en Argentina suele tener punto de miles (ej: 15.000, 1.500) o al menos 3 cifras (ej: 1500)
+            const priceMatch = texts[i].match(/(?:\$?\s*)(\d{1,3}(?:\.\d{3})+|\d{3,})/);
+            if (priceMatch) {
+              let priceStr = priceMatch[1].replace(/\./g, '');
+              let newPrice = parseInt(priceStr, 10);
+              if (newPrice > 0 && newPrice !== product.price) {
+                updates.push({ id: product.id, name: product.name, oldPrice: product.price, newPrice });
               }
+              break; // Al encontrar el primer precio válido, saltamos al siguiente producto
             }
           }
         }
