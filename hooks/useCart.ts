@@ -104,6 +104,11 @@ export function useCart(promotions: Promotion[] = []): UseCartReturn {
      */
     const clearCart = useCallback(() => {
         setCart([]);
+        try {
+            localStorage.removeItem('fluxo_active_cart');
+        } catch (error) {
+            console.error('Error removing cart from localStorage', error);
+        }
     }, []);
 
     // ----------------------------------------------------------
