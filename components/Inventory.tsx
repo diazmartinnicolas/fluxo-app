@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { logAction } from '../services/audit';
 import { z } from 'zod';
 import { ProductSchema } from '../schemas/products';
 import {
   Package, Plus, Search, Edit, Trash2, X,
-  Save, AlertCircle, CheckCircle, Filter
+  Save, AlertCircle, CheckCircle, Filter, Upload, RefreshCw
 } from 'lucide-react';
 import { TableRowSkeleton } from './ui/Skeleton';
 import { toast } from 'sonner';
@@ -32,6 +32,9 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -203,6 +206,78 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
     }
   };
 
+  // --- IMPORTADOR DE PRECIOS DESDE HTML ---
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'text/html');
+
+      const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+      const texts: string[] = [];
+      let node;
+      while (node = walker.nextNode()) {
+        const val = node.nodeValue?.trim();
+        if (val && val.length > 0) texts.push(val);
+      }
+
+      const updates: { id: string, name: string, oldPrice: number, newPrice: number }[] = [];
+
+      for (const product of products) {
+        // Buscamos si el nombre existe en los textos del HTML
+        const index = texts.findIndex(t => t.toLowerCase() === product.name.toLowerCase() || t.toLowerCase().includes(product.name.toLowerCase()));
+        if (index !== -1) {
+          // Buscamos un precio en los siguientes 5 nodos de texto
+          for (let i = index; i < Math.min(index + 5, texts.length); i++) {
+            // Busca formato de precio (1500, 15.000, $ 15.000)
+            const match = texts[i].match(/\$?\s*(\d{1,3}(?:\.\d{3})*|\d+)/);
+            if (match) {
+              const isPrice = texts[i].includes('$') || (i > 0 && texts[i - 1].includes('$'));
+              if (isPrice || match[1] !== texts[i]) {
+                let priceStr = match[1].replace(/\./g, '');
+                let newPrice = parseInt(priceStr, 10);
+                if (newPrice > 0 && newPrice !== product.price) {
+                  updates.push({ id: product.id, name: product.name, oldPrice: product.price, newPrice });
+                  break; // Precio encontrado, saltamos al siguiente producto
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (updates.length > 0) {
+        const confirmMsg = updates.slice(0, 10).map(u => `${u.name}: $${u.oldPrice} ➔ $${u.newPrice}`).join('\n');
+        const extraMsg = updates.length > 10 ? `\n... y ${updates.length - 10} más.` : '';
+
+        if (confirm(`Se encontraron ${updates.length} actualizaciones de precio en el archivo HTML:\n\n${confirmMsg}${extraMsg}\n\n¿Deseas aplicar estos nuevos precios al Inventario?`)) {
+          let successCount = 0;
+          for (const upd of updates) {
+            const { error } = await supabase.from('products').update({ price: upd.newPrice }).eq('id', upd.id);
+            if (!error) successCount++;
+          }
+          toast.success(`Se actualizaron ${successCount} precios correctamente.`);
+          await logAction('EDITAR_PROD', `Importación HTML masiva: ${successCount} precios`, 'Inventario');
+          fetchProducts();
+        } else {
+          toast.info('Actualización cancelada');
+        }
+      } else {
+        toast.warning('No se encontraron productos coincidentes con precios nuevos en el archivo.');
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error('Error al procesar el archivo HTML: ' + e.message);
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   // --- FILTRADO Y PAGINACIÓN ---
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -224,19 +299,39 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
     <div className="p-6 h-full flex flex-col bg-gray-50">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
             <Package size={32} className="text-orange-500" /> Inventario de Productos
           </h2>
           <p className="text-sm text-gray-500 mt-1">Gestiona tu carta, precios y disponibilidad.</p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-2 font-bold transition-colors"
-        >
-          <Plus size={20} /> Nuevo Producto
-        </button>
+
+        <div className="flex gap-2">
+          <input
+            type="file"
+            accept=".html"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 font-bold transition-colors disabled:opacity-50"
+            title="Sube el archivo HTML de tu carta web para actualizar precios automáticamente"
+          >
+            {importing ? <RefreshCw size={18} className="animate-spin" /> : <Upload size={18} />}
+            <span className="hidden sm:inline">Importar Carta HTML</span>
+          </button>
+
+          <button
+            onClick={handleOpenCreate}
+            className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-2 font-bold transition-colors"
+          >
+            <Plus size={20} /> Nuevo Producto
+          </button>
+        </div>
       </div>
 
       {/* BARRA DE BÚSQUEDA */}
