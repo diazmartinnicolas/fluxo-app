@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Product, Promotion } from '../types';
 
 // ============================================================
@@ -40,7 +40,24 @@ export interface UseCartReturn {
 // ============================================================
 
 export function useCart(promotions: Promotion[] = []): UseCartReturn {
-    const [cart, setCart] = useState<CartItem[]>([]);
+    const [cart, setCart] = useState<CartItem[]>(() => {
+        try {
+            const savedCart = localStorage.getItem('fluxo_active_cart');
+            return savedCart ? JSON.parse(savedCart) : [];
+        } catch (error) {
+            console.error('Error loading cart from localStorage', error);
+            return [];
+        }
+    });
+
+    // Guardar en localStorage cada vez que cambia el carrito
+    useEffect(() => {
+        try {
+            localStorage.setItem('fluxo_active_cart', JSON.stringify(cart));
+        } catch (error) {
+            console.error('Error saving cart to localStorage', error);
+        }
+    }, [cart]);
 
     // ----------------------------------------------------------
     // ACCIONES DEL CARRITO

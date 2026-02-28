@@ -153,6 +153,7 @@ interface KitchenProps {
 export default function Kitchen({ demoOrders = [], onDemoComplete, onEditOrder, companyName }: KitchenProps) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [completingIds, setCompletingIds] = useState<Map<number | string, NodeJS.Timeout>>(new Map());
 
   // --- ESTADO PARA IMPRESIÓN ---
   const [printingOrder, setPrintingOrder] = useState<any>(null);
@@ -197,23 +198,63 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, onEditOrder, 
 
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 30000);
-    return () => clearInterval(interval);
+
+    // Suscripción a cambios en la tabla orders (Real-time)
+    const channel = supabase
+      .channel('kitchen_orders')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  // --- HANDLERS ---
   const handleCompleteOrder = async (orderId: string | number) => {
     if (onDemoComplete && demoOrders.some(o => o.id === orderId)) {
       onDemoComplete(orderId);
       return;
     }
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: 'completado' })
-      .eq('id', orderId);
 
-    if (error) alert("Error al completar: " + error.message);
-    else fetchOrders();
+    // Toggle Undo state
+    if (completingIds.has(orderId)) {
+      clearTimeout(completingIds.get(orderId));
+      setCompletingIds(prev => {
+        const next = new Map(prev);
+        next.delete(orderId);
+        return next;
+      });
+      return;
+    }
+
+    // Set 2-second timeout to complete
+    const timer = setTimeout(async () => {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'completado' })
+        .eq('id', orderId);
+
+      if (error) alert("Error al completar: " + error.message);
+      else fetchOrders();
+
+      setCompletingIds(prev => {
+        const next = new Map(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }, 2000);
+
+    setCompletingIds(prev => {
+      const next = new Map(prev);
+      next.set(orderId, timer);
+      return next;
+    });
   };
 
   const handleCancelOrder = async (orderId: string | number) => {
@@ -404,9 +445,16 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, onEditOrder, 
                   {/* BOTÓN LISTO */}
                   <button
                     onClick={() => handleCompleteOrder(order.id)}
-                    className={`flex-1 min-w-[80px] py-2 rounded-lg font-bold text-white shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 text-sm ${isDemo ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700'}`}
+                    className={`flex-1 min-w-[80px] py-2 rounded-lg font-bold text-white shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 text-sm ${completingIds.has(order.id)
+                        ? 'bg-yellow-500 hover:bg-yellow-600'
+                        : isDemo ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700'
+                      }`}
                   >
-                    <CheckCircle size={16} /> {isDemo ? 'Despachar' : 'Listo'}
+                    {completingIds.has(order.id) ? (
+                      <><RefreshCw size={16} className="animate-spin" /> Deshacer</>
+                    ) : (
+                      <><CheckCircle size={16} /> {isDemo ? 'Despachar' : 'Listo'}</>
+                    )}
                   </button>
                 </div>
               </div>

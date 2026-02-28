@@ -155,6 +155,7 @@ export default function CashRegister() {
     const [notes, setNotes] = useState('');
     const [saving, setSaving] = useState(false);
     const [closed, setClosed] = useState(false);
+    const [pendingPrint, setPendingPrint] = useState(false);
 
     const printRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({ contentRef: printRef });
@@ -176,6 +177,14 @@ export default function CashRegister() {
     const formatPrice = (val: number) => new Intl.NumberFormat('es-AR', {
         style: 'currency', currency: 'ARS', maximumFractionDigits: 0
     }).format(val);
+
+    // Efecto para imprimir una vez que la data de cierre está lista en el DOM
+    useEffect(() => {
+        if (pendingPrint && closed && !saving) {
+            handlePrint();
+            setPendingPrint(false);
+        }
+    }, [pendingPrint, closed, saving, handlePrint]);
 
     // ----------------------------------------------------------
     // CARGAR VENTAS DEL DÍA
@@ -325,8 +334,7 @@ Efectivo Esperado: ${formatPrice(expectedCash)}
             exportToExcel();
 
             setClosed(true);
-
-            setTimeout(() => handlePrint(), 1000);
+            setPendingPrint(true);
         } catch (err: any) {
             console.error('Error saving closing:', err);
             toast.error('Error al guardar cierre: ' + err.message);

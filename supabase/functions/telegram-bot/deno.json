@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@supabase/functions-js": "jsr:@supabase/functions-js@^2",
+    "grammy": "https://esm.sh/grammy@1.34.0",
+    "@google/generative-ai": "https://esm.sh/@google/generative-ai@0.21.0"
+  }
+}
