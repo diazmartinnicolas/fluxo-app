@@ -25,11 +25,9 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     // Si está sincronizando
     if (isSyncing) {
         return (
-            <div className="fixed bottom-4 left-4 z-50">
-                <div className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg animate-pulse">
-                    <RefreshCw size={16} className="animate-spin" />
-                    <span className="text-sm font-medium">Sincronizando...</span>
-                </div>
+            <div className="fixed top-0 left-0 right-0 z-[100] bg-blue-600 text-white text-center py-1.5 shadow-md flex items-center justify-center gap-2 text-sm font-bold">
+                <RefreshCw size={16} className="animate-spin" />
+                <span>Sincronizando datos...</span>
             </div>
         );
     }
@@ -37,16 +35,14 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     // Si está offline
     if (!isOnline) {
         return (
-            <div className="fixed bottom-4 left-4 z-50">
-                <div className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-full shadow-lg">
-                    <WifiOff size={16} />
-                    <span className="text-sm font-medium">Sin conexión</span>
-                    {pendingCount > 0 && (
-                        <span className="bg-white text-red-500 px-2 py-0.5 rounded-full text-xs font-bold">
-                            {pendingCount}
-                        </span>
-                    )}
-                </div>
+            <div className="fixed top-0 left-0 right-0 z-[100] bg-red-600 text-white text-center py-1.5 shadow-md flex items-center justify-center gap-2 text-sm font-bold">
+                <WifiOff size={16} />
+                <span>Estás usando Fluxo sin conexión a Internet</span>
+                {pendingCount > 0 && (
+                    <span className="bg-white text-red-600 px-2 py-0.5 rounded-full text-xs font-black ml-2 animate-pulse">
+                        ⚠️ {pendingCount} pedido(s) sin subir
+                    </span>
+                )}
             </div>
         );
     }
@@ -54,17 +50,13 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     // Si está online pero hay pedidos pendientes
     if (pendingCount > 0) {
         return (
-            <div className="fixed bottom-4 left-4 z-50">
-                <button
-                    onClick={onSync}
-                    className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-full shadow-lg transition-colors group"
-                >
-                    <Cloud size={16} />
-                    <span className="text-sm font-medium">
-                        {pendingCount} pendiente{pendingCount > 1 ? 's' : ''}
-                    </span>
-                    <RefreshCw size={14} className="group-hover:animate-spin" />
-                </button>
+            <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-amber-900 text-center py-1.5 shadow-md flex items-center justify-center gap-3 text-sm font-bold cursor-pointer hover:bg-amber-400 transition-colors"
+                onClick={onSync}>
+                <Cloud size={16} />
+                <span>Tienes {pendingCount} pedido{pendingCount > 1 ? 's' : ''} pendiente(s) de sincronizar</span>
+                <span className="bg-white/50 px-2 py-0.5 text-xs rounded shadow-sm flex items-center gap-1">
+                    Hacer clic para forzar subida <RefreshCw size={12} />
+                </span>
             </div>
         );
     }

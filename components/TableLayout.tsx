@@ -496,9 +496,14 @@ export default function TableLayout({ onAddProducts }: TableLayoutProps) {
                                         ${draggingId === table.id ? 'shadow-2xl scale-105 z-50' : ''}
                                     `}
                                     >
-                                        <span className="text-base">{table.name}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-base">{table.name}</span>
+                                            {table.status === 'occupied' && (
+                                                <Users size={16} className="text-white/90 animate-pulse" />
+                                            )}
+                                        </div>
                                         <span className="text-xs opacity-80 flex items-center gap-1">
-                                            <Users size={10} /> {table.capacity}
+                                            <Users size={10} /> {table.capacity} p.
                                         </span>
 
                                         {/* Indicador de edición */}

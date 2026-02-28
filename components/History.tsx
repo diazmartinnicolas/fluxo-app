@@ -46,13 +46,13 @@ const PAYMENT_TYPE_CONFIG: Record<string, { label: string; icon: any; color: str
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-    pendiente: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700' },
-    completed: { label: 'Completado', color: 'bg-green-100 text-green-700' },
-    completado: { label: 'Completado', color: 'bg-green-100 text-green-700' },
-    cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-700' },
-    cancelado: { label: 'Cancelado', color: 'bg-red-100 text-red-700' },
-    en_preparacion: { label: 'Preparando', color: 'bg-blue-100 text-blue-700' },
-    listo: { label: 'Listo', color: 'bg-green-100 text-green-700' },
+    pendiente: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+    completed: { label: 'Completado', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+    completado: { label: 'Completado', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+    cancelled: { label: 'Cancelado', color: 'bg-rose-500 text-white border-rose-600 shadow-sm' },
+    cancelado: { label: 'Cancelado', color: 'bg-rose-500 text-white border-rose-600 shadow-sm' },
+    en_preparacion: { label: 'Preparando', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+    listo: { label: 'Listo', color: 'bg-teal-100 text-teal-800 border-teal-200' },
 };
 
 const formatPrice = (price: number) => {
@@ -567,7 +567,7 @@ export default function History() {
                                             </span>
                                         </td>
                                         <td className="p-3">
-                                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${statusCfg.color}`}>
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${statusCfg.color}`}>
                                                 {statusCfg.label}
                                             </span>
                                         </td>

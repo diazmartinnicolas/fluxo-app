@@ -72,7 +72,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
             {/* Contenido */}
             <header>
-                <h3 className="font-bold text-gray-800 text-sm mb-1 pr-6">
+                <h3 className="font-black text-gray-900 text-base md:text-lg mb-1 pr-6 leading-tight">
                     {product.name}
                 </h3>
                 {product.description && (

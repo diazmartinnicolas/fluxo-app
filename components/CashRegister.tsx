@@ -157,6 +157,28 @@ export default function CashRegister() {
     const [closed, setClosed] = useState(false);
     const [pendingPrint, setPendingPrint] = useState(false);
 
+    // Estado calculadora de billetes
+    const [showCalculator, setShowCalculator] = useState(false);
+    const [bills, setBills] = useState({
+        b20000: 0, b10000: 0, b2000: 0, b1000: 0, b500: 0, b200: 0, b100: 0, coins: 0
+    });
+
+    const handleBillChange = (bill: keyof typeof bills, value: string) => {
+        const num = parseInt(value) || 0;
+        const newBills = { ...bills, [bill]: num };
+        setBills(newBills);
+
+        const total = (newBills.b20000 * 20000) +
+            (newBills.b10000 * 10000) +
+            (newBills.b2000 * 2000) +
+            (newBills.b1000 * 1000) +
+            (newBills.b500 * 500) +
+            (newBills.b200 * 200) +
+            (newBills.b100 * 100) +
+            newBills.coins;
+        setCountedCash(total.toString());
+    };
+
     const printRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({ contentRef: printRef });
 
@@ -554,9 +576,46 @@ Efectivo Esperado: ${formatPrice(expectedCash)}
                             <Banknote size={20} className="text-green-500" />
                             ¿Cuánto hay en caja?
                         </h3>
-                        <p className="text-sm text-gray-500 mb-4">
-                            Contá el dinero físico en el cajón y escribí el total abajo.
-                        </p>
+
+                        <div className="flex justify-between items-center mb-4">
+                            <p className="text-sm text-gray-500 pr-2">
+                                Contá el dinero físico en el cajón y escribí el total.
+                            </p>
+                            <button
+                                onClick={() => setShowCalculator(!showCalculator)}
+                                className="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-200 transition-colors whitespace-nowrap"
+                            >
+                                {showCalculator ? 'Ocultar Calculador' : '🧮 Calculador'}
+                            </button>
+                        </div>
+
+                        {showCalculator && (
+                            <div className="mb-4 bg-orange-50 p-4 rounded-xl border border-orange-100 grid grid-cols-2 lg:grid-cols-4 gap-3 animate-in fade-in slide-in-from-top-2">
+                                {[
+                                    { key: 'b20000', label: '$20.000' },
+                                    { key: 'b10000', label: '$10.000' },
+                                    { key: 'b2000', label: '$2.000' },
+                                    { key: 'b1000', label: '$1.000' },
+                                    { key: 'b500', label: '$500' },
+                                    { key: 'b200', label: '$200' },
+                                    { key: 'b100', label: '$100' },
+                                    { key: 'coins', label: 'Monedas' },
+                                ].map((bill) => (
+                                    <div key={bill.key} className="flex flex-col">
+                                        <label className="text-[10px] font-bold text-gray-500 mb-1">{bill.label}</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={bills[bill.key as keyof typeof bills] || ''}
+                                            onChange={(e) => handleBillChange(bill.key as keyof typeof bills, e.target.value)}
+                                            className="w-full px-2 py-1.5 border border-orange-200 rounded text-sm text-center focus:ring-2 focus:ring-orange-300 outline-none"
+                                            placeholder="0"
+                                            disabled={closed}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         <div className="relative mb-4">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-400 font-bold">$</span>

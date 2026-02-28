@@ -154,6 +154,7 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, onEditOrder, 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingIds, setCompletingIds] = useState<Map<number | string, NodeJS.Timeout>>(new Map());
+  const [cancelingIds, setCancelingIds] = useState<Map<number | string, NodeJS.Timeout>>(new Map());
 
   // --- ESTADO PARA IMPRESIÓN ---
   const [printingOrder, setPrintingOrder] = useState<any>(null);
@@ -258,19 +259,42 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, onEditOrder, 
   };
 
   const handleCancelOrder = async (orderId: string | number) => {
-    if (!confirm("¿Seguro que deseas CANCELAR este pedido?")) return;
-
     if (onDemoComplete && demoOrders.some(o => o.id === orderId)) {
       onDemoComplete(orderId);
       return;
     }
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: 'cancelado' })
-      .eq('id', orderId);
 
-    if (error) alert("Error al cancelar: " + error.message);
-    else fetchOrders();
+    if (cancelingIds.has(orderId)) {
+      clearTimeout(cancelingIds.get(orderId));
+      setCancelingIds(prev => {
+        const next = new Map(prev);
+        next.delete(orderId);
+        return next;
+      });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'cancelado' })
+        .eq('id', orderId);
+
+      if (error) alert("Error al cancelar: " + error.message);
+      else fetchOrders();
+
+      setCancelingIds(prev => {
+        const next = new Map(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }, 2000);
+
+    setCancelingIds(prev => {
+      const next = new Map(prev);
+      next.set(orderId, timer);
+      return next;
+    });
   };
 
   // Función trigger de impresión
@@ -419,10 +443,17 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, onEditOrder, 
                   {/* BOTÓN CANCELAR */}
                   <button
                     onClick={() => handleCancelOrder(order.id)}
-                    className="p-2 rounded-lg font-bold border transition-colors flex items-center justify-center flex-shrink-0 bg-red-100 border-red-200 text-red-700 hover:bg-red-200"
-                    title="Cancelar Pedido"
+                    className={`p-2 rounded-lg font-bold border transition-colors flex items-center justify-center flex-shrink-0 ${cancelingIds.has(order.id)
+                        ? 'bg-red-500 border-red-600 text-white'
+                        : 'bg-red-100 border-red-200 text-red-700 hover:bg-red-200'
+                      }`}
+                    title={cancelingIds.has(order.id) ? "Deshacer Cancelar" : "Cancelar Pedido"}
                   >
-                    <XCircle size={18} />
+                    {cancelingIds.has(order.id) ? (
+                      <RefreshCw size={18} className="animate-spin" />
+                    ) : (
+                      <XCircle size={18} />
+                    )}
                   </button>
 
                   {/* --- NUEVO BOTÓN WHATSAPP --- */}
@@ -446,8 +477,8 @@ export default function Kitchen({ demoOrders = [], onDemoComplete, onEditOrder, 
                   <button
                     onClick={() => handleCompleteOrder(order.id)}
                     className={`flex-1 min-w-[80px] py-2 rounded-lg font-bold text-white shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 text-sm ${completingIds.has(order.id)
-                        ? 'bg-yellow-500 hover:bg-yellow-600'
-                        : isDemo ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700'
+                      ? 'bg-yellow-500 hover:bg-yellow-600'
+                      : isDemo ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700'
                       }`}
                   >
                     {completingIds.has(order.id) ? (

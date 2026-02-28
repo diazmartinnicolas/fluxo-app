@@ -27,6 +27,9 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
 
@@ -200,11 +203,22 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
     }
   };
 
-  // --- FILTRADO ---
+  // --- FILTRADO Y PAGINACIÓN ---
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Volver a la página 1 si busco algo
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   return (
     <div className="p-6 h-full flex flex-col bg-gray-50">
@@ -268,7 +282,7 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
               <tr><td colSpan={5} className="p-8 text-center text-gray-400 font-medium italic">Sin productos.</td></tr>
             ) : (
               <AnimatePresence mode="popLayout">
-                {filteredProducts.map((p) => (
+                {paginatedProducts.map((p) => (
                   <motion.tr
                     key={p.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -301,6 +315,52 @@ export default function Inventory({ onProductUpdate }: InventoryProps) {
           </tbody>
         </table >
       </div >
+
+      {/* CONTROLES DE PAGINACIÓN */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <p className="text-sm text-gray-500">
+            Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredProducts.length)} de {filteredProducts.length}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              Anterior
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum = i + 1;
+                // Simple windowing logic
+                if (totalPages > 5) {
+                  if (currentPage > 3) pageNum = currentPage - 2 + i;
+                  if (pageNum > totalPages) return null;
+                }
+                if (pageNum > totalPages) return null;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum ? 'bg-orange-600 text-white' : 'hover:bg-gray-100'
+                      }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* MODAL CREAR / EDITAR */}
       {
